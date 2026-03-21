@@ -1,5 +1,5 @@
 use {
-  crate::{group_selector::GroupSelector, semver_range::SemverRange},
+  crate::{context::ConfigError, group_selector::GroupSelector, semver_range::SemverRange},
   serde::Deserialize,
   serde_json::Value,
   std::collections::HashMap,
@@ -43,7 +43,7 @@ impl SemverGroup {
   }
 
   /// Create a single version group from a config item from the rcfile.
-  pub fn from_config(group: AnySemverGroup) -> Result<SemverGroup, String> {
+  pub fn from_config(group: AnySemverGroup) -> Result<SemverGroup, ConfigError> {
     let selector = GroupSelector::new(
       /* include_dependencies: */ group.dependencies,
       /* include_dependency_types: */ group.dependency_types,
@@ -62,7 +62,7 @@ impl SemverGroup {
         range: SemverRange::new(range),
       })
     } else {
-      Err("Invalid semver group: must have isDisabled, isIgnored, or range".to_string())
+      Err(ConfigError::InvalidSemverGroup)
     }
   }
 }

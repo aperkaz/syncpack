@@ -14,6 +14,7 @@
 use {
   crate::{
     cli::SortBy,
+    context::ConfigError,
     dependency::{Dependency, UpdateUrl},
     group_selector::GroupSelector,
     instance::{Instance, InstanceIdx},
@@ -135,7 +136,7 @@ impl VersionGroup {
 
   /// Create a single version group from a config item from the rcfile.
   /// Dep-type validation is done during `From<RawRcfile>` conversion.
-  pub fn from_config(group: AnyVersionGroup, packages: &Packages) -> Result<VersionGroup, String> {
+  pub fn from_config(group: AnyVersionGroup, packages: &Packages) -> Result<VersionGroup, ConfigError> {
     let selector = GroupSelector::new(
       /* include_dependencies: */ group.dependencies,
       /* include_dependency_types: */ group.dependency_types,
@@ -206,7 +207,7 @@ impl VersionGroup {
           variant: VersionGroupVariant::SameMinor,
         });
       } else {
-        return Err(format!("Unrecognised version group policy: {policy}"));
+        return Err(ConfigError::InvalidVersionGroupPolicy(policy.clone()));
       }
     }
     if let Some(snap_to) = &group.snap_to {

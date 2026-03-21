@@ -6,6 +6,7 @@ mod rcfile_test;
 
 use {
   crate::{
+    context::ConfigError,
     dependency::DependencyType,
     group_selector::GroupSelector,
     packages::Packages,
@@ -226,76 +227,93 @@ pub(crate) struct RawRcfile {
 
 impl RawRcfile {
   /// Handle config that is no longer supported or was hallucinated by an LLM
-  pub fn validate_unknown_fields(&self) -> Result<(), String> {
-    let mut errors: Vec<String> = vec![];
+  pub fn validate_unknown_fields(&self) -> Result<(), Vec<ConfigError>> {
+    let mut errors: Vec<ConfigError> = vec![];
     self.unknown_fields.iter().for_each(|(key, _)| match key.as_str() {
       "dependencyTypes" => {
-        errors.push("Config property 'dependencyTypes' is deprecated\nUse CLI flag instead: --dependency-types prod,dev,peer".to_string());
+        errors.push(ConfigError::DeprecatedProperty {
+          property: key.clone(),
+          hint: "Use CLI flag instead: --dependency-types prod,dev,peer".to_string(),
+        });
       }
       "specifierTypes" => {
-        errors.push("Config property 'specifierTypes' is deprecated\nUse CLI flag instead: --specifier-types exact,range".to_string());
+        errors.push(ConfigError::DeprecatedProperty {
+          property: key.clone(),
+          hint: "Use CLI flag instead: --specifier-types exact,range".to_string(),
+        });
       }
       "lintFormatting" => {
-        errors.push("Config property 'lintFormatting' is deprecated\nUse 'syncpack format --check' to validate formatting".to_string());
+        errors.push(ConfigError::DeprecatedProperty {
+          property: key.clone(),
+          hint: "Use 'syncpack format --check' to validate formatting".to_string(),
+        });
       }
       "lintSemverRanges" => {
-        errors
-          .push("Config property 'lintSemverRanges' is deprecated\nSemver range checking is always enabled in 'syncpack lint'".to_string());
+        errors.push(ConfigError::DeprecatedProperty {
+          property: key.clone(),
+          hint: "Semver range checking is always enabled in 'syncpack lint'".to_string(),
+        });
       }
       "lintVersions" => {
-        errors.push("Config property 'lintVersions' is deprecated\nVersion checking is always enabled in 'syncpack lint'".to_string());
+        errors.push(ConfigError::DeprecatedProperty {
+          property: key.clone(),
+          hint: "Version checking is always enabled in 'syncpack lint'".to_string(),
+        });
       }
       _ => {
-        errors.push(format!("Config property '{key}' is not recognised"));
+        errors.push(ConfigError::UnrecognisedProperty { path: key.clone() });
       }
     });
     self.custom_types.iter().for_each(|(custom_type_name, value)| {
       value.unknown_fields.iter().for_each(|(field_name, _)| {
-        errors.push(format!(
-          "Config property 'customTypes.{custom_type_name}.{field_name}' is not recognised"
-        ));
+        errors.push(ConfigError::UnrecognisedProperty {
+          path: format!("customTypes.{custom_type_name}.{field_name}"),
+        });
       });
     });
     self.dependency_groups.iter().enumerate().for_each(|(index, value)| {
       value.unknown_fields.iter().for_each(|(key, _)| {
-        errors.push(format!("Config property 'dependencyGroups[{index}].{key}' is not recognised"));
+        errors.push(ConfigError::UnrecognisedProperty {
+          path: format!("dependencyGroups[{index}].{key}"),
+        });
       });
     });
     self.semver_groups.iter().enumerate().for_each(|(index, value)| {
       value.unknown_fields.iter().for_each(|(key, _)| {
-        errors.push(format!("Config property 'semverGroups[{index}].{key}' is not recognised"));
+        errors.push(ConfigError::UnrecognisedProperty {
+          path: format!("semverGroups[{index}].{key}"),
+        });
       });
     });
     self.version_groups.iter().enumerate().for_each(|(index, value)| {
       value.unknown_fields.iter().for_each(|(key, _)| {
-        errors.push(format!("Config property 'versionGroups[{index}].{key}' is not recognised"));
+        errors.push(ConfigError::UnrecognisedProperty {
+          path: format!("versionGroups[{index}].{key}"),
+        });
       });
     });
     if errors.is_empty() {
       Ok(())
     } else {
-      errors.push("syncpack will exit due to an invalid config file, see https://syncpack.dev for documentation".to_string());
-      Err(errors.join("\n"))
+      Err(errors)
     }
   }
 }
 
-fn validate_raw_dep_types(raw: &[String], all: &[DependencyType]) -> Result<(), String> {
+fn validate_raw_dep_types(raw: &[String], all: &[DependencyType]) -> Result<(), ConfigError> {
   for s in raw {
     let name = s.trim_start_matches('!');
     if name != "**" && !all.iter().any(|dt| dt.name == name) {
-      return Err(format!(
-        "dependencyType '{name}' does not match any of syncpack or your customTypes"
-      ));
+      return Err(ConfigError::InvalidDependencyType { name: name.to_string() });
     }
   }
   Ok(())
 }
 
 impl TryFrom<RawRcfile> for Rcfile {
-  type Error = String;
+  type Error = ConfigError;
 
-  fn try_from(raw: RawRcfile) -> Result<Self, String> {
+  fn try_from(raw: RawRcfile) -> Result<Self, ConfigError> {
     let all_dependency_types = compute_all_dependency_types(&raw.custom_types);
     let mut dependency_groups = vec![];
     for dg in raw.dependency_groups {
@@ -363,7 +381,7 @@ impl Default for Rcfile {
 
 impl Rcfile {
   /// Create every version group defined in the rcfile.
-  pub fn get_version_groups(&mut self, packages: &Packages) -> Result<Vec<VersionGroup>, String> {
+  pub fn get_version_groups(&mut self, packages: &Packages) -> Result<Vec<VersionGroup>, ConfigError> {
     let mut all_groups: Vec<VersionGroup> = mem::take(&mut self.version_groups)
       .into_iter()
       .map(|group_config| VersionGroup::from_config(group_config, packages))

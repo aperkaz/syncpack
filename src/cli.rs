@@ -166,7 +166,7 @@ impl Cli {
       Some(("prompt", _)) => from_deprecated(Subcommand::Prompt),
       Some(("set-semver-ranges", _)) => from_deprecated(Subcommand::SetSemverRanges),
       Some(("update", matches)) => from_arg_matches(Subcommand::Update, matches),
-      _ => return Err(crate::context::SyncpackError::InvalidConfig("No subcommand specified".to_string())),
+      _ => return Err(crate::context::SyncpackError::NoSubcommand),
     })
   }
 }

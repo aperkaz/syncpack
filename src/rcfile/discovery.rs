@@ -26,8 +26,8 @@ impl Rcfile {
     {
       Some(result) => {
         let raw = result?;
-        raw.validate_unknown_fields().map_err(SyncpackError::InvalidConfig)?;
-        Rcfile::try_from(raw).map_err(SyncpackError::InvalidConfig)?
+        raw.validate_unknown_fields()?;
+        Rcfile::try_from(raw)?
       }
       None => {
         debug!("No config file found, using defaults");

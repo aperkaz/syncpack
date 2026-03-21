@@ -4,7 +4,7 @@ pub mod pattern_matcher;
 mod group_selector_test;
 
 use {
-  crate::{dependency::DependencyType, instance::InstanceDescriptor},
+  crate::{context::ConfigError, dependency::DependencyType, instance::InstanceDescriptor},
   pattern_matcher::PatternMatcher,
 };
 
@@ -108,12 +108,10 @@ impl GroupSelector {
   }
 
   /// Validate that all dependency type filters reference known dependency types.
-  pub fn validate_dependency_types(&self, all_dependency_types: &[DependencyType]) -> Result<(), String> {
+  pub fn validate_dependency_types(&self, all_dependency_types: &[DependencyType]) -> Result<(), ConfigError> {
     for expected in self.include_dependency_types.iter().chain(self.exclude_dependency_types.iter()) {
       if !all_dependency_types.iter().any(|actual| actual.name == *expected) {
-        return Err(format!(
-          "dependencyType '{expected}' does not match any of syncpack or your customTypes"
-        ));
+        return Err(ConfigError::InvalidDependencyType { name: expected.clone() });
       }
     }
     Ok(())
