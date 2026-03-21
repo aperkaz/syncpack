@@ -1,7 +1,7 @@
-use colored::Colorize;
+use {crate::context::SyncpackError, colored::Colorize};
 
 /// Run the fix-mismatches command (deprecated in v14)
-pub fn run() -> i32 {
+pub fn run() -> Result<(), SyncpackError> {
   eprintln!("{}", "Deprecated in syncpack v14".red().bold());
   eprintln!();
   eprintln!("{}", "fix-mismatches → fix".yellow().bold());
@@ -29,5 +29,5 @@ pub fn run() -> i32 {
   eprintln!();
   eprintln!("{}", "https://syncpack.dev/guide/migrate-v14#fix-mismatches-fix".blue().underline());
   eprintln!();
-  1
+  Err(SyncpackError::DeprecatedCommand)
 }

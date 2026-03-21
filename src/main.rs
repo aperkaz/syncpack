@@ -6,7 +6,7 @@ use {
       reporter::{JsonFixReporter, JsonFormatReporter, PrettyFixReporter, PrettyFormatReporter},
       set_semver_ranges, update,
     },
-    context::Context,
+    context::{Context, SyncpackError},
     registry::{client::LiveRegistryClient, updates::RegistryUpdates},
     visit_formatting::visit_formatting,
     visit_packages::visit_packages,
@@ -39,19 +39,21 @@ mod visit_packages;
 
 #[tokio::main]
 async fn main() {
-  let cli = Cli::parse().unwrap_or_else(|e| {
-    error!("{e}");
-    exit(1)
-  });
+  if let Err(e) = run().await {
+    let msg = e.to_string();
+    if !msg.is_empty() {
+      error!("{e}");
+    }
+    exit(1);
+  }
+}
 
+async fn run() -> Result<(), SyncpackError> {
+  let cli = Cli::parse()?;
   logger::init(&cli);
+  let ctx = Context::from_cli(cli)?;
 
-  let ctx = Context::from_cli(cli).unwrap_or_else(|e| {
-    error!("{e}");
-    exit(1)
-  });
-
-  let exit_code = match ctx.config.cli.subcommand {
+  match ctx.config.cli.subcommand {
     Subcommand::Fix => {
       let ctx = visit_packages(ctx, None);
       let pretty = PrettyFixReporter;
@@ -60,7 +62,7 @@ async fn main() {
         ReporterKind::Pretty => &pretty,
         ReporterKind::Json => &json_reporter,
       };
-      fix::run(ctx, reporter)
+      fix::run(ctx, reporter)?;
     }
     Subcommand::Format => {
       let ctx = visit_formatting(ctx);
@@ -70,11 +72,11 @@ async fn main() {
         ReporterKind::Pretty => &pretty,
         ReporterKind::Json => &json_reporter,
       };
-      format::run(ctx, reporter)
+      format::run(ctx, reporter)?;
     }
     Subcommand::Lint => {
       let ctx = visit_packages(ctx, None);
-      lint::run(ctx)
+      lint::run(ctx)?;
     }
     Subcommand::Update => {
       let client: Arc<dyn registry::client::RegistryClient> = Arc::new(LiveRegistryClient::new());
@@ -86,22 +88,22 @@ async fn main() {
       )
       .await;
       let ctx = visit_packages(ctx, Some(&updates));
-      update::run(ctx, &updates)
+      update::run(ctx, &updates)?;
     }
     Subcommand::List => {
       let ctx = visit_packages(ctx, None);
-      list::run(ctx)
+      list::run(ctx)?;
     }
     Subcommand::Json => {
       let ctx = visit_packages(ctx, None);
-      json::run(ctx)
+      json::run(ctx)?;
     }
-    Subcommand::ListMismatches => list_mismatches::run(),
-    Subcommand::LintSemverRanges => lint_semver_ranges::run(),
-    Subcommand::FixMismatches => fix_mismatches::run(),
-    Subcommand::SetSemverRanges => set_semver_ranges::run(),
-    Subcommand::Prompt => prompt::run(),
-  };
+    Subcommand::ListMismatches => list_mismatches::run()?,
+    Subcommand::LintSemverRanges => lint_semver_ranges::run()?,
+    Subcommand::FixMismatches => fix_mismatches::run()?,
+    Subcommand::SetSemverRanges => set_semver_ranges::run()?,
+    Subcommand::Prompt => prompt::run()?,
+  }
 
-  exit(exit_code);
+  Ok(())
 }

@@ -1,7 +1,10 @@
-use crate::{commands::ui, context::Context};
+use crate::{
+  commands::ui,
+  context::{Context, SyncpackError},
+};
 
 /// Run the lint command side effects
-pub fn run(ctx: Context) -> i32 {
+pub fn run(ctx: Context) -> Result<Context, SyncpackError> {
   let mut is_invalid = false;
 
   ctx.version_groups.iter().for_each(|group| {
@@ -29,9 +32,9 @@ pub fn run(ctx: Context) -> i32 {
   });
 
   if is_invalid {
-    1
+    Err(SyncpackError::IssuesFound)
   } else {
     ui::util::print_no_issues_found();
-    0
+    Ok(ctx)
   }
 }

@@ -1,6 +1,9 @@
-use crate::{commands::reporter::FixReporter, context::Context};
+use crate::{
+  commands::reporter::FixReporter,
+  context::{Context, SyncpackError},
+};
 
-pub fn run(ctx: Context, reporter: &dyn FixReporter) -> i32 {
+pub fn run(ctx: Context, reporter: &dyn FixReporter) -> Result<Context, SyncpackError> {
   let mut contains_unfixable_issues = false;
   let mut was_invalid = false;
 
@@ -55,8 +58,8 @@ pub fn run(ctx: Context, reporter: &dyn FixReporter) -> i32 {
   }
 
   if contains_unfixable_issues {
-    1
+    Err(SyncpackError::IssuesFound)
   } else {
-    0
+    Ok(ctx)
   }
 }

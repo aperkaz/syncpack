@@ -1,6 +1,9 @@
-use crate::{commands::reporter::FormatReporter, context::Context};
+use crate::{
+  commands::reporter::FormatReporter,
+  context::{Context, SyncpackError},
+};
 
-pub fn run(ctx: Context, reporter: &dyn FormatReporter) -> i32 {
+pub fn run(ctx: Context, reporter: &dyn FormatReporter) -> Result<Context, SyncpackError> {
   if ctx.config.cli.check {
     check_formatting(ctx, reporter)
   } else {
@@ -8,7 +11,7 @@ pub fn run(ctx: Context, reporter: &dyn FormatReporter) -> i32 {
   }
 }
 
-fn check_formatting(ctx: Context, reporter: &dyn FormatReporter) -> i32 {
+fn check_formatting(ctx: Context, reporter: &dyn FormatReporter) -> Result<Context, SyncpackError> {
   let mut is_invalid = false;
   ctx
     .packages
@@ -27,13 +30,13 @@ fn check_formatting(ctx: Context, reporter: &dyn FormatReporter) -> i32 {
     reporter.on_no_issues();
   }
   if is_invalid {
-    1
+    Err(SyncpackError::IssuesFound)
   } else {
-    0
+    Ok(ctx)
   }
 }
 
-fn fix_formatting(ctx: Context, reporter: &dyn FormatReporter) -> i32 {
+fn fix_formatting(ctx: Context, reporter: &dyn FormatReporter) -> Result<Context, SyncpackError> {
   let mut was_invalid = false;
   ctx
     .packages
@@ -61,5 +64,5 @@ fn fix_formatting(ctx: Context, reporter: &dyn FormatReporter) -> i32 {
   if !was_invalid {
     reporter.on_no_issues();
   }
-  0
+  Ok(ctx)
 }

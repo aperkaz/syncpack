@@ -1,5 +1,9 @@
 use {
-  crate::{context::Context, instance::Instance, version_group::VersionGroupVariant},
+  crate::{
+    context::{Context, SyncpackError},
+    instance::Instance,
+    version_group::VersionGroupVariant,
+  },
   serde_json::{json, Value},
 };
 
@@ -29,7 +33,7 @@ pub fn instance_to_json(_ctx: &Context, instance: &Instance, variant: &VersionGr
   })
 }
 
-pub fn run(ctx: Context) -> i32 {
+pub fn run(ctx: Context) -> Result<Context, SyncpackError> {
   let mut is_invalid = false;
 
   ctx
@@ -49,8 +53,8 @@ pub fn run(ctx: Context) -> i32 {
     });
 
   if is_invalid {
-    1
+    Err(SyncpackError::IssuesFound)
   } else {
-    0
+    Ok(ctx)
   }
 }

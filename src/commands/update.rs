@@ -1,14 +1,14 @@
 use {
   crate::{
     commands::{ui, ui::LINE_ENDING},
-    context::Context,
+    context::{Context, SyncpackError},
     registry::updates::RegistryUpdates,
     version_group::VersionGroupVariant,
   },
   log::{error, warn},
 };
 
-pub fn run(ctx: Context, registry_updates: &RegistryUpdates) -> i32 {
+pub fn run(ctx: Context, registry_updates: &RegistryUpdates) -> Result<Context, SyncpackError> {
   let mut was_outdated = false;
 
   ctx
@@ -59,7 +59,7 @@ pub fn run(ctx: Context, registry_updates: &RegistryUpdates) -> i32 {
   }
 
   if ctx.config.cli.check {
-    return if was_outdated { 1 } else { 0 };
+    return if was_outdated { Err(SyncpackError::IssuesFound) } else { Ok(ctx) };
   }
 
   if !ctx.config.cli.dry_run {
@@ -68,5 +68,5 @@ pub fn run(ctx: Context, registry_updates: &RegistryUpdates) -> i32 {
     });
   }
 
-  0
+  Ok(ctx)
 }

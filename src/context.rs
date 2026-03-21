@@ -28,7 +28,9 @@ pub enum ConfigError {
 
 #[derive(Debug)]
 pub enum SyncpackError {
+  DeprecatedCommand,
   InvalidConfig(Vec<ConfigError>),
+  IssuesFound,
   NoSubcommand,
   RcfileError(RcfileError),
 }
@@ -36,6 +38,7 @@ pub enum SyncpackError {
 impl fmt::Display for SyncpackError {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
+      Self::DeprecatedCommand => Ok(()),
       Self::InvalidConfig(errors) => {
         for (i, e) in errors.iter().enumerate() {
           if i > 0 {
@@ -45,6 +48,7 @@ impl fmt::Display for SyncpackError {
         }
         write!(f, "\ncheck your syncpack config file, see https://syncpack.dev for documentation")
       }
+      Self::IssuesFound => Ok(()),
       Self::NoSubcommand => write!(f, "No subcommand specified"),
       Self::RcfileError(e) => write!(f, "{e}"),
     }
