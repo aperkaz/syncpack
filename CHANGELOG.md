@@ -1,5 +1,19 @@
 # Changelog
 
+## [14.2.1](https://github.com/JamieMason/syncpack/compare/14.2.0...14.2.1) (2026-03-21)
+
+### Bug Fixes
+
+* **cargo:** update dependencies ([c6b8a0c](https://github.com/JamieMason/syncpack/commit/c6b8a0cd33d885a448bd5be4e6f98389b95db2cb))
+
+### Performance Improvements
+
+* **core:** avoid clone when reading props ([e1dea16](https://github.com/JamieMason/syncpack/commit/e1dea165461ac7b2bbf85cc3534ce9a35c5fd280))
+* **core:** avoid reserialising json to compare ([422a26a](https://github.com/JamieMason/syncpack/commit/422a26ae46104c30e8cfcacb0a79e008fab9acb1))
+* **core:** detect indent/newline once ([e476300](https://github.com/JamieMason/syncpack/commit/e4763006a6d9a98c719db3b932ae721f17e13182))
+* **specifier:** lazily create node_[range|version] ([cc1eac7](https://github.com/JamieMason/syncpack/commit/cc1eac70726966cd81f38152e4f7ceb9d58d5d67))
+* **specifier:** optimise parsing ([9a91292](https://github.com/JamieMason/syncpack/commit/9a91292961e210a8081ac6130cd7bff10c86173f))
+
 ## [14.2.0](https://github.com/JamieMason/syncpack/compare/14.1.0...14.2.0) (2026-03-08)
 
 ### Features
