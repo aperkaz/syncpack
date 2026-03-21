@@ -6,15 +6,11 @@ use {
       reporter::{JsonFixReporter, JsonFormatReporter, PrettyFixReporter, PrettyFormatReporter},
       set_semver_ranges, update,
     },
-    config::Config,
     context::Context,
-    packages::Packages,
-    registry_client::LiveRegistryClient,
     visit_formatting::visit_formatting,
     visit_packages::visit_packages,
   },
-  log::{debug, error},
-  std::{process::exit, sync::Arc},
+  std::process::exit,
 };
 
 #[cfg(test)]
@@ -58,36 +54,9 @@ async fn main() {
 
   logger::init(&cli);
 
-  let config = Config::from_cli(cli);
-  let is_update_command = matches!(&config.cli.subcommand, Subcommand::Update);
+  let ctx = Context::from_cli(cli);
 
-  debug!("Command: {:?}", config.cli.subcommand);
-  debug!("{:#?}", config.cli);
-  debug!("{:#?}", config.rcfile);
-
-  let packages = Packages::from_config(&config);
-  let catalogs = None; // catalogs::from_config(&config);
-
-  match packages.all.len() {
-    0 => {
-      error!("Found 0 package.json files");
-      exit(1);
-    }
-    len => debug!("Found {len} package.json files"),
-  }
-
-  let ctx = Context::create(
-    config,
-    packages,
-    if is_update_command {
-      Some(Arc::new(LiveRegistryClient::new()))
-    } else {
-      None
-    },
-    catalogs,
-  );
-
-  let _exit_code = match ctx.config.cli.subcommand {
+  let exit_code = match ctx.config.cli.subcommand {
     Subcommand::Fix => {
       let ctx = visit_packages(ctx);
       let pretty = PrettyFixReporter;
@@ -133,5 +102,5 @@ async fn main() {
     Subcommand::Prompt => prompt::run(),
   };
 
-  exit(_exit_code);
+  exit(exit_code);
 }

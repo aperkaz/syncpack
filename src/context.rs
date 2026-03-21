@@ -1,11 +1,12 @@
 use {
   crate::{
     catalogs::CatalogsByName,
+    cli::{Cli, Subcommand},
     config::Config,
     dependency::UpdateUrl,
     instance::Instance,
     packages::Packages,
-    registry_client::{AllPackageVersions, RegistryClient, RegistryError},
+    registry_client::{AllPackageVersions, LiveRegistryClient, RegistryClient, RegistryError},
     specifier::Specifier,
     version_group::VersionGroup,
   },
@@ -24,14 +25,6 @@ use {
 };
 
 /// The central data structure that owns all project data.
-///
-/// Context is created once and flows through the 3-phase pipeline using Rust's
-/// ownership system. Each phase takes ownership and returns it:
-/// 1. Context::create() - Read files, collect dependencies
-/// 2. visit_packages() - Assign InstanceState to each instance
-/// 3. command::run() - Process instances, consume Context
-///
-/// See PATTERNS.md "Ownership and Borrowing" section for details.
 #[derive(Debug)]
 pub struct Context {
   /// If present, the contents of each bun or pnpm catalog. The default catalog
@@ -64,17 +57,8 @@ pub struct Context {
 }
 
 impl Context {
-  /// Phase 1 of the 3-phase pipeline: Create Context (read-only).
-  ///
-  /// This function reads all configuration and package.json files, collects
-  /// all dependency instances, and assigns them to version groups.
-  ///
-  /// Important: InstanceState is NOT assigned here - all instances start as
-  /// Unknown. States are assigned later in visit_packages() (Phase 2).
-  ///
-  /// Called from: src/main.rs
-  /// Next step: visit_packages() in src/visit_packages.rs
-  /// See also: .cursorrules for critical invariants
+  /// Read all configuration and package.json files, collect all dependency
+  /// instances, and assign them to version groups.
   pub fn create(
     config: Config,
     packages: Packages,
@@ -133,6 +117,26 @@ impl Context {
       updates_by_internal_name,
       version_groups,
     }
+  }
+
+  pub fn from_cli(cli: Cli) -> Self {
+    let config = Config::from_cli(cli);
+
+    debug!("Command: {:?}", config.cli.subcommand);
+    debug!("{:#?}", config.cli);
+    debug!("{:#?}", config.rcfile);
+
+    let packages = Packages::from_config(&config);
+    let catalogs: Option<CatalogsByName> = None; // catalogs::from_config(&config);
+
+    let is_update_command = matches!(&config.cli.subcommand, Subcommand::Update);
+    let registry_client: Option<Arc<dyn RegistryClient>> = if is_update_command {
+      Some(Arc::new(LiveRegistryClient::new()))
+    } else {
+      None
+    };
+
+    Context::create(config, packages, registry_client, catalogs)
   }
 
   /// Fetch every version specifier ever published for all updateable
