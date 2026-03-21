@@ -20,8 +20,8 @@ pub struct PackageJson {
   pub file_path: PathBuf,
   /// Syncpack formatting mismatches found in the file
   pub formatting_mismatches: RefCell<Vec<Rc<FormatMismatch>>>,
-  /// The original, unedited raw JSON string
-  pub json: RefCell<String>,
+  /// The original file content as read from disk, used for change detection
+  pub raw: RefCell<String>,
   /// The parsed JSON object
   pub contents: RefCell<Value>,
   /// Indentation detected from the file's raw content (e.g. "  ", "    ", "\t")
@@ -61,19 +61,19 @@ pub enum FormatMismatchVariant {
 
 impl PackageJson {
   /// Parse a package.json from a raw JSON string and a file path
-  pub fn from_raw(raw: &str, file_path: PathBuf) -> Option<Self> {
-    serde_json::from_str(raw)
+  pub fn from_raw(raw: String, file_path: PathBuf) -> Option<Self> {
+    serde_json::from_str(&raw)
       .inspect_err(|_| {
         error!("Invalid JSON: {}", file_path.to_str().unwrap_or("unknown"));
       })
       .map(|contents: Value| {
-        let detected_indent = detect_indent(raw).indent().to_string();
+        let detected_indent = detect_indent(&raw).indent().to_string();
         let detected_indent = if detected_indent.is_empty() {
           "  ".to_string()
         } else {
           detected_indent
         };
-        let detected_newline = match LineEnding::find_or_use_lf(raw) {
+        let detected_newline = match LineEnding::find_or_use_lf(&raw) {
           LineEnding::CRLF => "\r\n".to_string(),
           LineEnding::CR => "\r".to_string(),
           LineEnding::LF => "\n".to_string(),
@@ -86,7 +86,7 @@ impl PackageJson {
             .to_string(),
           file_path,
           formatting_mismatches: RefCell::new(vec![]),
-          json: RefCell::new(contents.to_string()),
+          raw: RefCell::new(raw),
           contents: RefCell::new(contents),
           detected_indent,
           detected_newline,
@@ -102,7 +102,7 @@ impl PackageJson {
         error!("package.json not readable at {}", &file_path.to_str().unwrap());
       })
       .ok()
-      .and_then(|raw| Self::from_raw(&raw, file_path.clone()))
+      .and_then(|raw| Self::from_raw(raw, file_path.clone()))
   }
 
   /// Does a property exist at this path of the parsed package.json?
@@ -183,10 +183,10 @@ impl PackageJson {
   pub fn write_to_disk(&self, config: &Config) -> bool {
     let vec = self.serialize(config.rcfile.indent.as_deref());
     std::fs::write(&self.file_path, &vec).expect("Failed to write package.json to disk");
-    let next_json = self.to_pretty_json(vec);
-    let has_changed = next_json != *self.json.borrow();
+    let next = self.to_pretty_json(vec);
+    let has_changed = next != *self.raw.borrow();
     if has_changed {
-      *self.json.borrow_mut() = next_json;
+      *self.raw.borrow_mut() = next;
     }
     has_changed
   }

@@ -4,7 +4,7 @@ use {
 };
 
 fn package_json_from_raw(raw: &str) -> PackageJson {
-  PackageJson::from_raw(raw, PathBuf::from("/packages/test/package.json")).expect("Failed to parse test package.json")
+  PackageJson::from_raw(raw.to_string(), PathBuf::from("/packages/test/package.json")).expect("Failed to parse test package.json")
 }
 
 fn config_with_indent(indent: &str) -> Config {

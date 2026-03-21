@@ -77,11 +77,12 @@ pub fn package_json_from_value(contents: Value) -> PackageJson {
   // e.g., "package-a" -> "/packages/package-a/package.json"
   let file_path = PathBuf::from(format!("/packages/{name}/package.json"));
 
+  let raw = serde_json::to_string_pretty(&contents).unwrap_or_default();
   PackageJson {
     name,
     file_path,
     formatting_mismatches: RefCell::new(vec![]),
-    json: RefCell::new(contents.to_string()),
+    raw: RefCell::new(raw),
     contents: RefCell::new(contents),
     detected_indent: "  ".to_string(),
     detected_newline: "\n".to_string(),

@@ -24,7 +24,7 @@ fn make_package(name: &str) -> Rc<RefCell<PackageJson>> {
     name: name.to_string(),
     file_path: PathBuf::from(format!("/packages/{name}/package.json")),
     formatting_mismatches: RefCell::new(vec![]),
-    json: RefCell::new("{}".to_string()),
+    raw: RefCell::new("{}".to_string()),
     contents: RefCell::new(json!({"name": name})),
     detected_indent: "  ".to_string(),
     detected_newline: "\n".to_string(),
