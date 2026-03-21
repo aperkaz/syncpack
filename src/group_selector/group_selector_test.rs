@@ -26,8 +26,6 @@ fn make_package(name: &str) -> Rc<RefCell<PackageJson>> {
     formatting_mismatches: RefCell::new(vec![]),
     raw: RefCell::new("{}".to_string()),
     contents: RefCell::new(json!({"name": name})),
-    detected_indent: "  ".to_string(),
-    detected_newline: "\n".to_string(),
   }))
 }
 

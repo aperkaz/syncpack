@@ -8,7 +8,7 @@ use {
     context::Config,
     dependency::{DependencyType, Strategy},
     instance::InstanceDescriptor,
-    package_json::PackageJson,
+    package_json::{detect_formatting, DetectedFormatting, PackageJson},
     rcfile::Rcfile,
     specifier::Specifier,
   },
@@ -28,21 +28,35 @@ use {
 #[derive(Debug)]
 pub struct Packages {
   pub all: Vec<Rc<RefCell<PackageJson>>>,
+  pub formatting: DetectedFormatting,
 }
 
 impl Packages {
   /// Create an empty collection of package.json files
   pub fn new() -> Self {
-    Self { all: vec![] }
+    Self {
+      all: vec![],
+      formatting: DetectedFormatting::default(),
+    }
   }
 
   /// Get every package.json file matched by the user's source patterns
   pub fn from_config(config: &Config) -> Self {
     let file_paths = get_file_paths(config);
     let mut packages = Self::new();
-    file_paths.iter().for_each(|file_path| {
-      if let Some(package_json) = PackageJson::from_file(file_path) {
-        packages.add_package(package_json);
+    let mut formatting_detected = false;
+    file_paths.iter().for_each(|file_path| match fs::read_to_string(file_path) {
+      Ok(raw) => {
+        if !formatting_detected {
+          packages.formatting = detect_formatting(&raw);
+          formatting_detected = true;
+        }
+        if let Some(package_json) = PackageJson::from_raw(raw, file_path.clone()) {
+          packages.add_package(package_json);
+        }
+      }
+      Err(_) => {
+        log::error!("package.json not readable at {}", file_path.to_str().unwrap_or("unknown"));
       }
     });
     packages

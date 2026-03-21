@@ -58,7 +58,9 @@ fn fix_formatting(ctx: Context, reporter: &dyn FormatReporter) -> Result<Context
     });
   if !ctx.config.cli.dry_run {
     ctx.packages.all.iter().for_each(|package| {
-      package.borrow().write_to_disk(&ctx.config);
+      package
+        .borrow()
+        .write_to_disk(ctx.config.rcfile.indent.as_deref(), &ctx.packages.formatting);
     });
   }
   if !was_invalid {
