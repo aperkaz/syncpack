@@ -912,9 +912,8 @@ mod highest_or_lowest {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -969,9 +968,8 @@ mod highest_or_lowest {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1031,9 +1029,8 @@ mod highest_or_lowest {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1093,9 +1090,8 @@ mod highest_or_lowest {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1155,9 +1151,8 @@ mod highest_or_lowest {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1217,9 +1212,8 @@ mod highest_or_lowest {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1673,9 +1667,8 @@ mod non_semver {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1730,9 +1723,8 @@ mod non_semver {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1782,9 +1774,8 @@ mod non_semver {
         "package-a": "workspace:*"
       }
     })]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1816,9 +1807,8 @@ mod non_semver {
         "package-a": "workspace:*"
       }
     })]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1857,9 +1847,8 @@ mod non_semver {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1914,9 +1903,8 @@ mod non_semver {
         }
       }),
     ]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -1966,9 +1954,8 @@ mod non_semver {
         "mix": "file:./mix"
       }
     })]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -2020,9 +2007,8 @@ mod dependency_groups {
         "@types/foo": "4.0.5"
       }
     })]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -2074,9 +2060,8 @@ mod dependency_groups {
         "@types/foo": "^4.0.5"
       }
     })]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
@@ -2779,9 +2764,8 @@ mod catalogs {
         "mix": "catalog:"
       }
     })]);
-    let registry_client = None;
     let catalogs = None;
-    let ctx = Context::create(config, packages, registry_client, catalogs);
+    let ctx = Context::create(config, packages, catalogs);
     let ctx = visit_packages(ctx);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {

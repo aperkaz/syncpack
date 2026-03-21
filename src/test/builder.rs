@@ -1,13 +1,11 @@
 #![allow(dead_code)]
 
 use {
-  super::{mock, registry_client::MockRegistryClient},
+  super::mock,
   crate::{
-    catalogs::CatalogsByName, cli::UpdateTarget, context::Context, registry_client::RegistryClient, visit_formatting::visit_formatting,
-    visit_packages::visit_packages,
+    catalogs::CatalogsByName, cli::UpdateTarget, context::Context, visit_formatting::visit_formatting, visit_packages::visit_packages,
   },
   serde_json::{json, Value},
-  std::sync::Arc,
 };
 
 /// Builder pattern for creating test contexts with reduced boilerplate
@@ -108,7 +106,6 @@ impl TestBuilder {
 
   pub fn build(self) -> Context {
     let mut config = mock::config_from_mock(self.build_config());
-    let registry_client = self.create_registry_client();
     let catalogs = self.create_catalogs();
     let packages = mock::packages_from_mocks(self.packages);
     if let Some(target) = self.update_target {
@@ -118,7 +115,7 @@ impl TestBuilder {
         UpdateTarget::Patch => config.cli.target = UpdateTarget::Patch,
       }
     }
-    Context::create(config, packages, registry_client, catalogs)
+    Context::create(config, packages, catalogs)
   }
 
   pub fn build_and_visit_packages(self) -> Context {
@@ -147,19 +144,10 @@ impl TestBuilder {
     let ctx = if let Some(updates) = self.registry_updates {
       mock::context_with_registry_updates(config, packages, updates, catalogs).await
     } else {
-      let registry_client = None;
-      Context::create(config, packages, registry_client, catalogs)
+      Context::create(config, packages, catalogs)
     };
 
     visit_packages(ctx)
-  }
-
-  /// Create registry client if updates are provided
-  fn create_registry_client(&self) -> Option<Arc<dyn RegistryClient>> {
-    self
-      .registry_updates
-      .as_ref()
-      .map(|updates| Arc::new(MockRegistryClient::from_json(updates.clone())) as Arc<dyn RegistryClient>)
   }
 
   /// Create catalogs if provided

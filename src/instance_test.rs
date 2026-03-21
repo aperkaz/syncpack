@@ -24,8 +24,7 @@ fn returns_correct_registry_update_url() {
   })]);
 
   let catalogs = None;
-  let registry_client = None;
-  let ctx = Context::create(config, packages, registry_client, catalogs);
+  let ctx = Context::create(config, packages, catalogs);
 
   let get_update_url_by_name = |name: &str| {
     ctx

@@ -7,10 +7,11 @@ use {
       set_semver_ranges, update,
     },
     context::Context,
+    registry_client::LiveRegistryClient,
     visit_formatting::visit_formatting,
     visit_packages::visit_packages,
   },
-  std::process::exit,
+  std::{process::exit, sync::Arc},
 };
 
 #[cfg(test)]
@@ -83,7 +84,8 @@ async fn main() {
     }
     Subcommand::Update => {
       let mut ctx = ctx;
-      ctx.fetch_all_updates().await;
+      let client: Arc<dyn registry_client::RegistryClient> = Arc::new(LiveRegistryClient::new());
+      ctx.fetch_all_updates(&client).await;
       let ctx = visit_packages(ctx);
       update::run(ctx)
     }

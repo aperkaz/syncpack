@@ -99,11 +99,6 @@ pub fn packages_from_mocks(values: Vec<serde_json::Value>) -> Packages {
   packages
 }
 
-/// Create a MockRegistryClient from mocked package data
-fn registry_client_from_mocks(mock_updates: serde_json::Value) -> Option<Arc<dyn RegistryClient>> {
-  Some(Arc::new(MockRegistryClient::from_json(mock_updates)))
-}
-
 /// Create a CatalogsByName from mocked catalog data
 ///
 /// Examples:
@@ -134,8 +129,8 @@ pub async fn context_with_registry_updates(
   mock_updates: serde_json::Value,
   catalogs: Option<CatalogsByName>,
 ) -> Context {
-  let registry_client = registry_client_from_mocks(mock_updates);
-  let mut ctx = Context::create(config, packages, registry_client, catalogs);
-  ctx.fetch_all_updates().await;
+  let client: Arc<dyn RegistryClient> = Arc::new(MockRegistryClient::from_json(mock_updates));
+  let mut ctx = Context::create(config, packages, catalogs);
+  ctx.fetch_all_updates(&client).await;
   ctx
 }

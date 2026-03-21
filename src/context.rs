@@ -1,12 +1,12 @@
 use {
   crate::{
     catalogs::CatalogsByName,
-    cli::{Cli, Subcommand},
+    cli::Cli,
     config::Config,
     dependency::UpdateUrl,
     instance::Instance,
     packages::Packages,
-    registry_client::{AllPackageVersions, LiveRegistryClient, RegistryClient, RegistryError},
+    registry_client::{AllPackageVersions, RegistryClient, RegistryError},
     specifier::Specifier,
     version_group::VersionGroup,
   },
@@ -45,10 +45,6 @@ pub struct Context {
   pub instances: Vec<Rc<Instance>>,
   /// Every package.json in the project
   pub packages: Packages,
-  /// Registry client for fetching package metadata.
-  /// Arc<dyn RegistryClient> is used because the client is shared across
-  /// async tasks (crosses thread boundaries).
-  pub registry_client: Option<Arc<dyn RegistryClient>>,
   /// All updates from the npm registry which have been chosen either by the
   /// user via a prompt or automatically by choosing the latest version
   pub updates_by_internal_name: HashMap<String, Vec<Rc<Specifier>>>,
@@ -59,12 +55,7 @@ pub struct Context {
 impl Context {
   /// Read all configuration and package.json files, collect all dependency
   /// instances, and assign them to version groups.
-  pub fn create(
-    config: Config,
-    packages: Packages,
-    registry_client: Option<Arc<dyn RegistryClient>>,
-    catalogs: Option<CatalogsByName>,
-  ) -> Self {
+  pub fn create(config: Config, packages: Packages, catalogs: Option<CatalogsByName>) -> Self {
     let mut instances = vec![];
     let updates_by_internal_name = HashMap::new();
     let all_dependency_types = config.rcfile.get_all_dependency_types();
@@ -113,7 +104,6 @@ impl Context {
       failed_updates,
       instances,
       packages,
-      registry_client,
       updates_by_internal_name,
       version_groups,
     }
@@ -129,20 +119,13 @@ impl Context {
     let packages = Packages::from_config(&config);
     let catalogs: Option<CatalogsByName> = None; // catalogs::from_config(&config);
 
-    let is_update_command = matches!(&config.cli.subcommand, Subcommand::Update);
-    let registry_client: Option<Arc<dyn RegistryClient>> = if is_update_command {
-      Some(Arc::new(LiveRegistryClient::new()))
-    } else {
-      None
-    };
-
-    Context::create(config, packages, registry_client, catalogs)
+    Context::create(config, packages, catalogs)
   }
 
   /// Fetch every version specifier ever published for all updateable
   /// dependencies in the project.
-  pub async fn fetch_all_updates(&mut self) {
-    let client = Arc::clone(self.registry_client.as_ref().expect("Registry client not initialized"));
+  pub async fn fetch_all_updates(&mut self, client: &Arc<dyn RegistryClient>) {
+    let client = Arc::clone(client);
     let semaphore = Arc::new(Semaphore::new(self.config.rcfile.max_concurrent_requests));
     let progress_bars = Arc::new(MultiProgress::new());
     let mut handles: Vec<(String, JoinHandle<Result<AllPackageVersions, RegistryError>>)> = vec![];
