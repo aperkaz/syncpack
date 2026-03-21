@@ -1,3 +1,6 @@
+[workspace]
+members = ["crates/syncpack-specifier"]
+
 [package]
 name = "syncpack"
 version = "14.2.0"
@@ -23,7 +26,6 @@ env_logger = "0.11.9"
 globset = "0.4.18"
 indicatif = "0.18.4"
 itertools = "0.14.0"
-lazy_static = "1.5.0"
 log = "0.4.29"
 node-semver = "2.2.0"
 regex = { version = "1.12.3", default-features = false, features = ["std"] }
@@ -36,6 +38,7 @@ detect-newline-style = "0.1.2"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.149", features = ["preserve_order"] }
 serde_yaml = "0.9"
+syncpack-specifier = { path = "crates/syncpack-specifier" }
 thiserror = "2.0.18"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
 

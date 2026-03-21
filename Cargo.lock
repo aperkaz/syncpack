@@ -1284,7 +1284,6 @@ dependencies = [
  "globset",
  "indicatif",
  "itertools",
- "lazy_static",
  "log",
  "node-semver",
  "regex",
@@ -1292,8 +1291,20 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "syncpack-specifier",
  "thiserror 2.0.18",
  "tokio",
+]
+
+[[package]]
+name = "syncpack-specifier"
+version = "0.1.0"
+dependencies = [
+ "ctor",
+ "lazy_static",
+ "log",
+ "node-semver",
+ "regex",
 ]
 
 [[package]]

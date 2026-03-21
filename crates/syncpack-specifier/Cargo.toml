@@ -1,0 +1,16 @@
+[package]
+name = "syncpack-specifier"
+version = "0.1.0"
+authors = ["Jamie Mason <jamie@foldleft.io>"]
+edition = "2021"
+description = "npm version specifier parser and comparator"
+license = "MIT"
+
+[dev-dependencies]
+ctor = "0.6.3"
+
+[dependencies]
+lazy_static = "1.5.0"
+log = "0.4.29"
+node-semver = "2.2.0"
+regex = { version = "1.12.3", default-features = false, features = ["std"] }

@@ -28,15 +28,7 @@ pub enum SortBy {
   Name,
 }
 
-#[derive(Debug)]
-pub enum UpdateTarget {
-  /// "*.*.*"
-  Latest,
-  /// "1.*.*"
-  Minor,
-  /// "1.2.*"
-  Patch,
-}
+pub use syncpack_specifier::update_target::UpdateTarget;
 
 #[derive(Debug)]
 pub enum ReporterKind {
