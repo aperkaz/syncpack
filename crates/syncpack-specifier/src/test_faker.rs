@@ -8,35 +8,10 @@ use {
 };
 
 pub fn get_latest() -> Vec<(&'static str, Latest)> {
-  let huge = HUGE.to_string();
-  let huge_version = format!("{huge}.{huge}.{huge}");
-  let node_version = Specifier::new_node_version(&huge_version).unwrap();
-
   vec![
-    (
-      "latest",
-      Latest {
-        raw: "latest".to_string(),
-        node_version: node_version.clone(),
-        semver_range: SemverRange::Any,
-      },
-    ),
-    (
-      "*",
-      Latest {
-        raw: "*".to_string(),
-        node_version: node_version.clone(),
-        semver_range: SemverRange::Any,
-      },
-    ),
-    (
-      "x",
-      Latest {
-        raw: "x".to_string(),
-        node_version,
-        semver_range: SemverRange::Any,
-      },
-    ),
+    ("latest", Latest::create_test("latest")),
+    ("*", Latest::create_test("*")),
+    ("x", Latest::create_test("x")),
   ]
 }
 
@@ -74,23 +49,11 @@ pub fn get_catalog() -> Vec<(&'static str, Catalog)> {
 }
 
 pub fn get_major() -> Vec<(&'static str, Major)> {
-  vec![(
-    "1",
-    Major {
-      raw: "1".to_string(),
-      node_version: Rc::new(node_semver::Version::parse("1.999999.999999").unwrap()),
-    },
-  )]
+  vec![("1", Major::create_test("1"))]
 }
 
 pub fn get_minor() -> Vec<(&'static str, Minor)> {
-  vec![(
-    "1.2",
-    Minor {
-      raw: "1.2".to_string(),
-      node_version: Rc::new(node_semver::Version::parse("1.2.999999").unwrap()),
-    },
-  )]
+  vec![("1.2", Minor::create_test("1.2"))]
 }
 
 pub fn get_exact() -> Vec<(&'static str, Exact)> {
@@ -384,80 +347,17 @@ pub fn get_unsupported() -> Vec<&'static str> {
 }
 
 pub fn get_range_major() -> Vec<(&'static str, RangeMajor)> {
-  vec![(
-    "~1",
-    RangeMajor {
-      raw: "~1".to_string(),
-      node_range: Rc::new(node_semver::Range::parse("~1.999999.999999").unwrap()),
-      node_version: Rc::new(node_semver::Version::parse("1.999999.999999").unwrap()),
-      semver_number: "1".to_string(),
-      semver_range: SemverRange::Patch,
-    },
-  )]
+  vec![("~1", RangeMajor::create_test("~1"))]
 }
 
 pub fn get_range_minor() -> Vec<(&'static str, RangeMinor)> {
   vec![
-    (
-      "<5.0",
-      RangeMinor {
-        raw: "<5.0".to_string(),
-        node_range: Rc::new(node_semver::Range::parse("<5.0").unwrap()),
-        node_version: Rc::new(node_semver::Version::parse("5.0.999999").unwrap()),
-        semver_number: "5.0".to_string(),
-        semver_range: SemverRange::Lt,
-      },
-    ),
-    (
-      "<=5.0",
-      RangeMinor {
-        raw: "<=5.0".to_string(),
-        node_range: Rc::new(node_semver::Range::parse("<=5.0").unwrap()),
-        node_version: Rc::new(node_semver::Version::parse("5.0.999999").unwrap()),
-        semver_number: "5.0".to_string(),
-        semver_range: SemverRange::Lte,
-      },
-    ),
-    (
-      ">5.0",
-      RangeMinor {
-        raw: ">5.0".to_string(),
-        node_range: Rc::new(node_semver::Range::parse(">5.0").unwrap()),
-        node_version: Rc::new(node_semver::Version::parse("5.0.999999").unwrap()),
-        semver_number: "5.0".to_string(),
-        semver_range: SemverRange::Gt,
-      },
-    ),
-    (
-      ">=5.0",
-      RangeMinor {
-        raw: ">=5.0".to_string(),
-        node_range: Rc::new(node_semver::Range::parse(">=5.0").unwrap()),
-        node_version: Rc::new(node_semver::Version::parse("5.0.999999").unwrap()),
-        semver_number: "5.0".to_string(),
-        semver_range: SemverRange::Gte,
-      },
-    ),
-    (
-      "^4.1",
-      RangeMinor {
-        raw: "^4.1".to_string(),
-        node_range: Rc::new(node_semver::Range::parse("^4.1").unwrap()),
-        node_version: Rc::new(node_semver::Version::parse("4.1.999999").unwrap()),
-        semver_number: "4.1".to_string(),
-        semver_range: SemverRange::Minor,
-      },
-    ),
-    (
-      "~1.2",
-      RangeMinor {
-        raw: "~1.2".to_string(),
-        node_range: Rc::new(node_semver::Range::parse("~1.2").unwrap()),
-        node_version: Rc::new(node_semver::Version::parse("1.2.999999").unwrap()),
-        semver_number: "1.2".to_string(),
-        semver_range: SemverRange::Patch,
-      },
-    ),
+    ("<5.0", RangeMinor::create_test("<5.0")),
+    ("<=5.0", RangeMinor::create_test("<=5.0")),
+    (">5.0", RangeMinor::create_test(">5.0")),
+    (">=5.0", RangeMinor::create_test(">=5.0")),
+    ("^4.1", RangeMinor::create_test("^4.1")),
+    ("~1.2", RangeMinor::create_test("~1.2")),
   ]
 }
 

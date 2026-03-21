@@ -1,32 +1,50 @@
 use {
-  crate::{semver_range::SemverRange, Specifier},
-  std::rc::Rc,
+  crate::{semver_range::SemverRange, Specifier, HUGE},
+  std::{cell::OnceCell, rc::Rc},
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Latest {
-  /// "*"
-  /// "latest"
-  /// "x"
+  /// "*", "latest", "x"
   pub raw: String,
-  /// Used for ordering - Latest gets the HUGE version (999999.999999.999999)
-  /// so it sorts after all real versions
-  pub node_version: Rc<node_semver::Version>,
+  /// Lazily parsed HUGE version for ordering (999999.999999.999999)
+  node_version: OnceCell<Rc<node_semver::Version>>,
   /// The semver range is always Any for Latest
   pub semver_range: SemverRange,
 }
 
+impl PartialEq for Latest {
+  fn eq(&self, other: &Self) -> bool {
+    self.raw == other.raw && self.semver_range == other.semver_range
+  }
+}
+
 impl Latest {
   pub fn create(raw: &str) -> Specifier {
-    let huge = crate::HUGE.to_string();
-    let huge_version = format!("{huge}.{huge}.{huge}");
-    match Specifier::new_node_version(&huge_version) {
-      Some(node_version) => Specifier::Latest(Self {
-        raw: raw.to_string(),
-        node_version,
-        semver_range: SemverRange::Any,
-      }),
-      None => Specifier::Unsupported(raw.to_string()),
+    Specifier::Latest(Self {
+      raw: raw.to_string(),
+      node_version: OnceCell::new(),
+      semver_range: SemverRange::Any,
+    })
+  }
+
+  #[cfg(test)]
+  pub fn create_test(raw: &str) -> Self {
+    Self {
+      raw: raw.to_string(),
+      node_version: OnceCell::new(),
+      semver_range: SemverRange::Any,
     }
+  }
+
+  pub fn get_node_version(&self) -> Rc<node_semver::Version> {
+    self
+      .node_version
+      .get_or_init(|| {
+        let huge = HUGE.to_string();
+        let huge_version = format!("{huge}.{huge}.{huge}");
+        Specifier::new_node_version(&huge_version).expect("HUGE version is always valid")
+      })
+      .clone()
   }
 }

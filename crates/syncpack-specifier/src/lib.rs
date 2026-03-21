@@ -387,12 +387,12 @@ impl Specifier {
       Self::Alias(s) => s.inner_specifier.get_node_version(),
       Self::Git(s) => s.node_version.clone(),
       Self::Exact(s) => Some(s.node_version.clone()),
-      Self::Latest(s) => Some(s.node_version.clone()),
-      Self::Major(s) => Some(s.node_version.clone()),
-      Self::Minor(s) => Some(s.node_version.clone()),
+      Self::Latest(s) => Some(s.get_node_version()),
+      Self::Major(s) => Some(s.get_node_version()),
+      Self::Minor(s) => Some(s.get_node_version()),
       Self::Range(s) => Some(s.node_version.clone()),
-      Self::RangeMajor(s) => Some(s.node_version.clone()),
-      Self::RangeMinor(s) => Some(s.node_version.clone()),
+      Self::RangeMajor(s) => Some(s.get_node_version()),
+      Self::RangeMinor(s) => Some(s.get_node_version()),
       Self::WorkspaceProtocol(s) => s.as_resolved().and_then(|spec: &Rc<Specifier>| spec.get_node_version()),
       Self::Catalog(_)
       | Self::ComplexSemver(_)
@@ -418,8 +418,8 @@ impl Specifier {
       Self::ComplexSemver(s) => Some(s.node_range.clone()),
       Self::Git(s) => s.node_range.clone(),
       Self::Range(s) => Some(s.node_range.clone()),
-      Self::RangeMajor(s) => Some(s.node_range.clone()),
-      Self::RangeMinor(s) => Some(s.node_range.clone()),
+      Self::RangeMajor(s) => Some(s.get_node_range()),
+      Self::RangeMinor(s) => Some(s.get_node_range()),
       Self::WorkspaceProtocol(s) => {
         // Try resolved specifier first, otherwise check for "*" (RangeOnly(Any))
         s.as_resolved().and_then(|spec: &Rc<Specifier>| spec.get_node_range()).or_else(|| {

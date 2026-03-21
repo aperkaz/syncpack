@@ -1,27 +1,45 @@
 use {
   crate::{Specifier, HUGE},
-  std::rc::Rc,
+  std::{cell::OnceCell, rc::Rc},
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Minor {
   /// "1.2"
   pub raw: String,
-  /// Used for ordering and comparison
-  ///
-  /// "1.2" -> "1.2.999999"
-  pub node_version: Rc<node_semver::Version>,
+  /// Lazily parsed padded version: "1.2" -> "1.2.999999"
+  node_version: OnceCell<Rc<node_semver::Version>>,
+}
+
+impl PartialEq for Minor {
+  fn eq(&self, other: &Self) -> bool {
+    self.raw == other.raw
+  }
 }
 
 impl Minor {
   pub fn create(raw: &str) -> Specifier {
-    let padded = format!("{}.{}", raw, HUGE);
-    match Specifier::new_node_version(&padded) {
-      Some(node_version) => Specifier::Minor(Self {
-        raw: raw.to_string(),
-        node_version,
-      }),
-      None => Specifier::Unsupported(raw.to_string()),
+    Specifier::Minor(Self {
+      raw: raw.to_string(),
+      node_version: OnceCell::new(),
+    })
+  }
+
+  #[cfg(test)]
+  pub fn create_test(raw: &str) -> Self {
+    Self {
+      raw: raw.to_string(),
+      node_version: OnceCell::new(),
     }
+  }
+
+  pub fn get_node_version(&self) -> Rc<node_semver::Version> {
+    self
+      .node_version
+      .get_or_init(|| {
+        let padded = format!("{}.{}", self.raw, HUGE);
+        Specifier::new_node_version(&padded).expect("pre-validated minor version")
+      })
+      .clone()
   }
 }
