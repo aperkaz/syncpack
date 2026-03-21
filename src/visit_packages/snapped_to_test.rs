@@ -1,6 +1,6 @@
 use {
   crate::{
-    instance_state::{FixableInstance::*, InstanceState, SemverGroupAndVersionConflict::*, SuspectInstance::*, ValidInstance::*},
+    instance::{FixableInstance::*, InstanceState, SemverGroupAndVersionConflict::*, SuspectInstance::*, ValidInstance::*},
     test::{
       self,
       expect::{expect, ExpectedInstance},

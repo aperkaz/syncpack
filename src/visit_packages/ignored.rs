@@ -1,6 +1,6 @@
 use {
   super::indent::{L1, L2},
-  crate::{context::Context, instance_state::ValidInstance},
+  crate::{context::Context, instance::ValidInstance},
   log::debug,
 };
 

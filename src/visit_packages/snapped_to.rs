@@ -2,7 +2,7 @@ use {
   super::indent::{L1, L10, L2, L3, L4, L5, L6, L7, L8, L9},
   crate::{
     context::Context,
-    instance_state::{FixableInstance, SemverGroupAndVersionConflict, SuspectInstance, ValidInstance},
+    instance::{FixableInstance, SemverGroupAndVersionConflict, SuspectInstance, ValidInstance},
   },
   log::debug,
   std::rc::Rc,

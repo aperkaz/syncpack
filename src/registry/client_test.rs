@@ -1,4 +1,4 @@
-use {crate::registry_client::PackageMeta, serde_json::json, std::collections::BTreeMap};
+use {crate::registry::client::PackageMeta, serde_json::json, std::collections::BTreeMap};
 
 #[test]
 fn filters_out_deprecated_versions() {

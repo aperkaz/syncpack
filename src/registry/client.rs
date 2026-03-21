@@ -1,6 +1,6 @@
 #[cfg(test)]
-#[path = "registry_client_test.rs"]
-mod registry_client_test;
+#[path = "client_test.rs"]
+mod client_test;
 
 use {
   crate::dependency::UpdateUrl,

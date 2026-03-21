@@ -1,7 +1,7 @@
 use {
   crate::{
     dependency::UpdateUrl,
-    registry_client::{AllPackageVersions, RegistryClient, RegistryError},
+    registry::client::{AllPackageVersions, RegistryClient, RegistryError},
   },
   reqwest::StatusCode,
   std::collections::BTreeMap,

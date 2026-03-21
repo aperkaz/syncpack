@@ -5,8 +5,8 @@ mod packages_test;
 use {
   crate::{
     cli::Cli,
-    config::Config,
-    dependency_type::{DependencyType, Strategy},
+    context::Config,
+    dependency::{DependencyType, Strategy},
     instance::InstanceDescriptor,
     package_json::PackageJson,
     rcfile::Rcfile,

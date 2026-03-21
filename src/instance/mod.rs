@@ -10,17 +10,18 @@
 //! - state field uses RefCell for interior mutability during inspection phase
 //! - States start as Unknown and are assigned in visit_packages()
 
+pub mod instance_state;
+
+pub use instance_state::{
+  FixableInstance, InstanceState, InvalidInstance, SemverGroupAndVersionConflict, SuspectInstance, UnfixableInstance, ValidInstance,
+};
+
 #[cfg(test)]
-#[path = "instance_test.rs"]
 mod instance_test;
 
 use {
   crate::{
-    dependency::UpdateUrl,
-    dependency_type::{DependencyType, Strategy},
-    instance_state::{
-      FixableInstance, InstanceState, InvalidInstance, SemverGroupAndVersionConflict, SuspectInstance, UnfixableInstance, ValidInstance,
-    },
+    dependency::{DependencyType, Strategy, UpdateUrl},
     package_json::PackageJson,
     semver_range::SemverRange,
     specifier::Specifier,

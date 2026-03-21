@@ -1,5 +1,8 @@
 use {
-  crate::{context::Context, instance::Instance, instance_state::InstanceState},
+  crate::{
+    context::Context,
+    instance::{Instance, InstanceState},
+  },
   log::error,
 };
 

@@ -1,5 +1,5 @@
 use {
-  crate::{config::Config, package_json::PackageJson, test::mock},
+  crate::{context::Config, package_json::PackageJson, test::mock},
   std::path::PathBuf,
 };
 

@@ -2,7 +2,7 @@ use {
   crate::{
     cli::UpdateTarget,
     context::Context,
-    instance_state::{
+    instance::{
       FixableInstance::*, InstanceState, SemverGroupAndVersionConflict::*, SuspectInstance::*, UnfixableInstance::*, ValidInstance::*,
     },
     test::{

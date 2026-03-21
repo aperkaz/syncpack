@@ -3,8 +3,8 @@ use {
   crate::{
     context::Context,
     dependency::Dependency,
-    instance_state::{FixableInstance, SemverGroupAndVersionConflict, SuspectInstance, UnfixableInstance, ValidInstance},
-    registry_updates::RegistryUpdates,
+    instance::{FixableInstance, SemverGroupAndVersionConflict, SuspectInstance, UnfixableInstance, ValidInstance},
+    registry::updates::RegistryUpdates,
     semver_range::SemverRange,
   },
   log::debug,

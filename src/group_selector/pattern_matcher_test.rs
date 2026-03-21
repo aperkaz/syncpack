@@ -1,4 +1,4 @@
-use crate::pattern_matcher::PatternMatcher;
+use crate::group_selector::pattern_matcher::PatternMatcher;
 
 #[test]
 fn from_pattern_exact() {

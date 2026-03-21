@@ -7,8 +7,7 @@ use {
       set_semver_ranges, update,
     },
     context::Context,
-    registry_client::LiveRegistryClient,
-    registry_updates::RegistryUpdates,
+    registry::{client::LiveRegistryClient, updates::RegistryUpdates},
     visit_formatting::visit_formatting,
     visit_packages::visit_packages,
   },
@@ -22,21 +21,15 @@ mod test;
 mod catalogs;
 mod cli;
 mod commands;
-mod config;
 mod context;
 mod dependency;
-mod dependency_type;
 mod group_selector;
 mod instance;
-mod instance_state;
 mod logger;
 mod package_json;
 mod packages;
-mod pattern_matcher;
 mod rcfile;
-mod registry_client;
-mod registry_updates;
-mod semver_group;
+mod registry;
 mod semver_range;
 mod specifier;
 mod version_group;
@@ -77,7 +70,7 @@ async fn main() {
       lint::run(ctx)
     }
     Subcommand::Update => {
-      let client: Arc<dyn registry_client::RegistryClient> = Arc::new(LiveRegistryClient::new());
+      let client: Arc<dyn registry::client::RegistryClient> = Arc::new(LiveRegistryClient::new());
       let updates = RegistryUpdates::fetch(
         &client,
         &ctx.version_groups,

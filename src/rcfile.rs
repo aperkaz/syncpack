@@ -1,16 +1,18 @@
+pub mod semver_group;
+
 #[cfg(test)]
 #[path = "rcfile_test.rs"]
 mod rcfile_test;
 
 use {
   crate::{
-    dependency_type::DependencyType,
+    dependency::DependencyType,
     group_selector::GroupSelector,
     packages::Packages,
-    semver_group::{AnySemverGroup, SemverGroup},
     version_group::{AnyVersionGroup, VersionGroup},
   },
   log::error,
+  semver_group::{AnySemverGroup, SemverGroup},
   serde::Deserialize,
   serde_json::Value,
   std::{collections::HashMap, mem, process::exit},

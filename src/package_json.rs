@@ -3,7 +3,7 @@
 mod package_json_test;
 
 use {
-  crate::{config::Config, dependency_type::Strategy, instance::Instance},
+  crate::{context::Config, dependency::Strategy, instance::Instance},
   detect_indent::detect_indent,
   detect_newline_style::LineEnding,
   log::error,

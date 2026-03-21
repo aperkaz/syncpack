@@ -167,7 +167,7 @@ mod tests {
   use {
     super::*,
     crate::{
-      instance_state::{InstanceState, ValidInstance::*},
+      instance::{InstanceState, ValidInstance::*},
       test::expect::{expect, ExpectedInstance},
     },
   };

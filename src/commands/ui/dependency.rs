@@ -3,7 +3,7 @@ use {
     commands::ui,
     context::Context,
     dependency::Dependency,
-    instance_state::{InstanceState, ValidInstance},
+    instance::{InstanceState, ValidInstance},
     version_group::VersionGroupVariant,
   },
   colored::*,

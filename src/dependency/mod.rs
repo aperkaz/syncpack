@@ -10,13 +10,15 @@
 //!
 //! See src/version_group.rs for how dependencies are organized.
 
+pub mod dependency_type;
+
+pub use dependency_type::{DependencyType, Strategy};
 use {
   crate::{
     cli::UpdateTarget,
-    instance::{Instance, InstanceIdx},
-    instance_state::InstanceState,
+    instance::{Instance, InstanceIdx, InstanceState},
     package_json::PackageJson,
-    registry_updates::RegistryUpdates,
+    registry::updates::RegistryUpdates,
     semver_range::SemverRange,
     specifier::Specifier,
     version_group::{PreferVersion, VersionGroupVariant},
@@ -26,7 +28,6 @@ use {
 };
 
 #[cfg(test)]
-#[path = "dependency_test.rs"]
 mod dependency_test;
 
 /// URL information for fetching package metadata from npm registry.

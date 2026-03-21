@@ -1,8 +1,12 @@
+pub mod pattern_matcher;
+
 #[cfg(test)]
-#[path = "group_selector_test.rs"]
 mod group_selector_test;
 
-use crate::{dependency_type::DependencyType, instance::InstanceDescriptor, pattern_matcher::PatternMatcher};
+use {
+  crate::{dependency::DependencyType, instance::InstanceDescriptor},
+  pattern_matcher::PatternMatcher,
+};
 
 #[derive(Clone, Debug)]
 pub struct GroupSelector {

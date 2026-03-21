@@ -2,7 +2,7 @@ use {
   crate::{
     commands::{ui, ui::LINE_ENDING},
     context::Context,
-    registry_updates::RegistryUpdates,
+    registry::updates::RegistryUpdates,
     version_group::VersionGroupVariant,
   },
   log::{error, warn},

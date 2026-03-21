@@ -2,7 +2,7 @@ use {
   super::indent::{L1, L2, L3, L4, L5, L6, L7, L8},
   crate::{
     context::Context,
-    instance_state::{FixableInstance, SuspectInstance, ValidInstance},
+    instance::{FixableInstance, SuspectInstance, ValidInstance},
   },
   log::debug,
 };

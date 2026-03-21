@@ -1,6 +1,6 @@
 use {
   crate::{
-    dependency_type::{DependencyType, Strategy},
+    dependency::{DependencyType, Strategy},
     group_selector::GroupSelector,
     instance::InstanceDescriptor,
     package_json::PackageJson,

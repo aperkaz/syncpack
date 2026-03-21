@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use {
-  crate::{config::Config, specifier::Specifier},
+  crate::{context::Config, specifier::Specifier},
   log::debug,
   serde::Deserialize,
   std::{collections::HashMap, fs, rc::Rc, time::Instant},

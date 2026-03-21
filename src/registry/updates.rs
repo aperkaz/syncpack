@@ -2,7 +2,7 @@ use {
   crate::{
     dependency::UpdateUrl,
     instance::Instance,
-    registry_client::{AllPackageVersions, RegistryClient, RegistryError},
+    registry::client::{AllPackageVersions, RegistryClient, RegistryError},
     specifier::Specifier,
     version_group::VersionGroup,
   },

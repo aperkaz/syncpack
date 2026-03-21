@@ -2,8 +2,7 @@ use {
   crate::{
     commands::ui,
     context::Context,
-    instance::Instance,
-    instance_state::{InstanceState, InvalidInstance, ValidInstance},
+    instance::{Instance, InstanceState, InvalidInstance, ValidInstance},
   },
   colored::*,
   log::{error, info},

@@ -2,14 +2,30 @@ use {
   crate::{
     catalogs::CatalogsByName,
     cli::Cli,
-    config::Config,
     instance::{Instance, InstanceIdx},
     packages::Packages,
+    rcfile::Rcfile,
     version_group::VersionGroup,
   },
   log::{debug, error},
   std::{mem, process::exit},
 };
+
+#[derive(Debug)]
+pub struct Config {
+  pub cli: Cli,
+  pub rcfile: Rcfile,
+}
+
+impl Config {
+  /// Read the rcfile from stdin and fall back to defaults if none was sent
+  pub fn from_cli(cli: Cli) -> Config {
+    Config {
+      rcfile: Rcfile::from_disk(&cli),
+      cli,
+    }
+  }
+}
 
 /// The central data structure that owns all project data.
 #[derive(Debug)]
