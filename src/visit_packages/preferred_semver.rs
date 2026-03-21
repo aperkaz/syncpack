@@ -25,7 +25,7 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
       let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
-      if instance.is_local {
+      if instance.is_local_instance {
         debug!("{L4}it is the invalid local instance");
         debug!("{L5}mark as suspect");
         instance.mark_suspect(SuspectInstance::InvalidLocalVersion);
@@ -43,7 +43,7 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
       let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
-      if instance.is_local {
+      if instance.is_local_instance {
         debug!("{L4}it is the valid local instance");
         instance.mark_valid(ValidInstance::IsLocalAndValid, &local_specifier);
         continue;

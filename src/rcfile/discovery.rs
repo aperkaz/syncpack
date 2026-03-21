@@ -7,7 +7,7 @@ use {
       json::{from_json_path, try_from_json_candidates},
       package_json::try_from_package_json_config_property,
       yaml::{from_yaml_path, try_from_yaml_candidates},
-      Rcfile,
+      RawRcfile, Rcfile,
     },
   },
   log::{debug, error},
@@ -23,7 +23,10 @@ impl Rcfile {
       .or_else(|| try_from_package_json_config_property(cli))
       .or_else(|| try_from_js_candidates(cli))
       .map(|result| match result {
-        Ok(rcfile) => rcfile,
+        Ok(raw) => {
+          raw.visit_unknown_rcfile_fields();
+          Rcfile::from(raw)
+        }
         Err(err) => {
           error!("{err}");
           exit(1);
@@ -34,11 +37,10 @@ impl Rcfile {
         Rcfile::default()
       });
     debug!("Config discovery completed in {:?}", start.elapsed());
-    rcfile.visit_unknown_rcfile_fields();
     rcfile
   }
 
-  fn try_from_cli_option(cli: &Cli) -> Option<Result<Rcfile, RcfileError>> {
+  fn try_from_cli_option(cli: &Cli) -> Option<Result<RawRcfile, RcfileError>> {
     cli.config_path.as_ref().map(|path| {
       let config_path = PathBuf::from(path);
       let absolute_path = if config_path.is_absolute() {

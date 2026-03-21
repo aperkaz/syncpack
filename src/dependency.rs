@@ -107,7 +107,7 @@ impl Dependency {
 
   pub fn add_instance(&mut self, idx: InstanceIdx, instance: &Instance) {
     self.instances.push(idx);
-    if instance.is_local {
+    if instance.is_local_instance {
       *self.local_instance.borrow_mut() = Some(idx);
     }
   }

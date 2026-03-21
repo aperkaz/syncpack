@@ -14,7 +14,7 @@ use {
   serde_json::Value,
   std::{
     cell::RefCell,
-    collections::{HashMap, VecDeque},
+    collections::{HashSet, VecDeque},
     fs,
     path::{Path, PathBuf},
     rc::Rc,
@@ -55,30 +55,14 @@ impl Packages {
     self.all.iter().find(|package| package.borrow().name == name).map(Rc::clone)
   }
 
-  /// Return an index of every local package with a valid name and version
-  pub fn get_local_versions(&self) -> HashMap<String, Rc<Specifier>> {
-    self
-      .all
-      .iter()
-      .filter_map(|package| -> Option<(String, Rc<Specifier>)> {
-        let package = package.borrow();
-        let name = package.get_prop("/name");
-        let version = package.get_prop("/version");
-        if let (Some(Value::String(name)), Some(Value::String(version))) = (name, version) {
-          Some((name, Specifier::new(&version)))
-        } else {
-          None
-        }
-      })
-      .collect()
-  }
-
   /// Get every instance of a dependency from every package.json file
   pub fn get_all_instances<F>(&self, all_dependency_types: &Vec<DependencyType>, mut on_instance: F)
   where
     F: FnMut(InstanceDescriptor),
   {
-    let _local_versions = self.get_local_versions();
+    // Pre-compute local package names for O(1) is_local_dependency lookups
+    let local_package_names: HashSet<String> = self.all.iter().map(|p| p.borrow().name.clone()).collect();
+
     for package in self.all.iter() {
       for dependency_type in all_dependency_types {
         match dependency_type.strategy {
@@ -98,6 +82,7 @@ impl Packages {
               on_instance(InstanceDescriptor {
                 dependency_type: dependency_type.clone(),
                 internal_name: name.to_string(),
+                is_local_dependency: local_package_names.contains(&name),
                 matches_cli_filter: false,
                 name: name.to_string(),
                 package: Rc::clone(package),
@@ -111,6 +96,7 @@ impl Packages {
                 on_instance(InstanceDescriptor {
                   dependency_type: dependency_type.clone(),
                   internal_name: name.to_string(),
+                  is_local_dependency: local_package_names.contains(name),
                   matches_cli_filter: false,
                   name: name.to_string(),
                   package: Rc::clone(package),
@@ -124,6 +110,7 @@ impl Packages {
               on_instance(InstanceDescriptor {
                 dependency_type: dependency_type.clone(),
                 internal_name: dependency_type.name.clone(),
+                is_local_dependency: local_package_names.contains(&dependency_type.name),
                 matches_cli_filter: false,
                 name: dependency_type.name.clone(),
                 package: Rc::clone(package),
@@ -138,6 +125,7 @@ impl Packages {
                   on_instance(InstanceDescriptor {
                     dependency_type: dependency_type.clone(),
                     internal_name: name.to_string(),
+                    is_local_dependency: local_package_names.contains(&name),
                     matches_cli_filter: false,
                     name: name.to_string(),
                     package: Rc::clone(package),

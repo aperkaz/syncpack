@@ -9,8 +9,81 @@ use {
   log::error,
   serde::Deserialize,
   serde_json::Value,
-  std::{collections::HashMap, process::exit},
+  std::{collections::HashMap, mem, process::exit},
 };
+
+pub fn compute_all_dependency_types(custom_types: &HashMap<String, CustomType>) -> Vec<DependencyType> {
+  let default_types = HashMap::from([
+    (
+      String::from("dev"),
+      CustomType {
+        strategy: String::from("versionsByName"),
+        name_path: None,
+        path: String::from("devDependencies"),
+        unknown_fields: HashMap::new(),
+      },
+    ),
+    (
+      String::from("local"),
+      CustomType {
+        strategy: String::from("name~version"),
+        name_path: Some(String::from("name")),
+        path: String::from("version"),
+        unknown_fields: HashMap::new(),
+      },
+    ),
+    (
+      String::from("overrides"),
+      CustomType {
+        strategy: String::from("versionsByName"),
+        name_path: None,
+        path: String::from("overrides"),
+        unknown_fields: HashMap::new(),
+      },
+    ),
+    (
+      String::from("peer"),
+      CustomType {
+        strategy: String::from("versionsByName"),
+        name_path: None,
+        path: String::from("peerDependencies"),
+        unknown_fields: HashMap::new(),
+      },
+    ),
+    (
+      String::from("pnpmOverrides"),
+      CustomType {
+        strategy: String::from("versionsByName"),
+        name_path: None,
+        path: String::from("pnpm.overrides"),
+        unknown_fields: HashMap::new(),
+      },
+    ),
+    (
+      String::from("prod"),
+      CustomType {
+        strategy: String::from("versionsByName"),
+        name_path: None,
+        path: String::from("dependencies"),
+        unknown_fields: HashMap::new(),
+      },
+    ),
+    (
+      String::from("resolutions"),
+      CustomType {
+        strategy: String::from("versionsByName"),
+        name_path: None,
+        path: String::from("resolutions"),
+        unknown_fields: HashMap::new(),
+      },
+    ),
+  ]);
+  default_types
+    .iter()
+    .chain(custom_types.iter())
+    .map(|(name, custom_type)| DependencyType::new(name, custom_type))
+    .collect()
+}
 
 mod discovery;
 mod error;
@@ -108,9 +181,10 @@ pub struct DependencyGroup {
   pub unknown_fields: HashMap<String, Value>,
 }
 
+/// Raw deserialized config file. Converted to `Rcfile` via `From<RawRcfile>`.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Rcfile {
+pub(crate) struct RawRcfile {
   #[serde(rename = "$schema", skip_serializing)]
   _schema: Option<serde::de::IgnoredAny>,
   #[serde(default = "empty_custom_types")]
@@ -145,13 +219,7 @@ pub struct Rcfile {
   pub unknown_fields: HashMap<String, Value>,
 }
 
-impl Default for Rcfile {
-  fn default() -> Self {
-    serde_json::from_str("{}").expect("An empty object should produce a default Rcfile")
-  }
-}
-
-impl Rcfile {
+impl RawRcfile {
   /// Handle config that is no longer supported or was hallucinated by an LLM
   pub fn visit_unknown_rcfile_fields(&self) {
     let mut is_valid = true;
@@ -215,127 +283,105 @@ impl Rcfile {
       exit(1);
     }
   }
+}
 
-  /// Create every alias defined in the rcfile.
-  pub fn get_dependency_groups(&self, packages: &Packages, all_dependency_types: &[DependencyType]) -> Vec<GroupSelector> {
-    self
+fn validate_or_exit(result: Result<(), String>) {
+  if let Err(msg) = result {
+    error!("{msg}");
+    error!("check your syncpack config file");
+    exit(1);
+  }
+}
+
+fn validate_raw_dep_types(raw: &[String], all: &[DependencyType]) -> Result<(), String> {
+  for s in raw {
+    let name = s.trim_start_matches('!');
+    if name != "**" && !all.iter().any(|dt| dt.name == name) {
+      return Err(format!(
+        "dependencyType '{name}' does not match any of syncpack or your customTypes"
+      ));
+    }
+  }
+  Ok(())
+}
+
+impl From<RawRcfile> for Rcfile {
+  fn from(raw: RawRcfile) -> Self {
+    let all_dependency_types = compute_all_dependency_types(&raw.custom_types);
+    let dependency_groups = raw
       .dependency_groups
-      .iter()
-      .map(|dependency_group_config| {
-        GroupSelector::new(
-          /* all_packages: */ packages,
-          /* include_dependencies: */ dependency_group_config.dependencies.clone(),
-          /* include_dependency_types: */ dependency_group_config.dependency_types.clone(),
-          /* alias_name: */ dependency_group_config.alias_name.clone(),
-          /* include_packages: */ dependency_group_config.packages.clone(),
-          /* include_specifier_types: */ dependency_group_config.specifier_types.clone(),
-          /* all_dependency_types: */ all_dependency_types,
-        )
+      .into_iter()
+      .map(|dg| {
+        let selector = GroupSelector::new(dg.dependencies, dg.dependency_types, dg.alias_name, dg.packages, dg.specifier_types);
+        validate_or_exit(selector.validate_dependency_types(&all_dependency_types));
+        selector
       })
-      .collect()
-  }
-
-  /// Create every semver group defined in the rcfile.
-  pub fn get_semver_groups(&self, packages: &Packages, all_dependency_types: &[DependencyType]) -> Vec<SemverGroup> {
-    let mut all_groups: Vec<SemverGroup> = vec![];
-    all_groups.push(SemverGroup::get_exact_local_specifiers(all_dependency_types));
-    self.semver_groups.iter().for_each(|group_config| {
-      all_groups.push(SemverGroup::from_config(group_config, packages, all_dependency_types));
-    });
-    all_groups.push(SemverGroup::get_catch_all(all_dependency_types));
-    all_groups
-  }
-
-  /// Create every version group defined in the rcfile.
-  pub fn get_version_groups(&self, packages: &Packages, all_dependency_types: &[DependencyType]) -> Vec<VersionGroup> {
-    let mut all_groups: Vec<VersionGroup> = self
-      .version_groups
-      .iter()
-      .map(|group_config| VersionGroup::from_config(group_config, packages, all_dependency_types))
       .collect();
-    all_groups.push(VersionGroup::get_catch_all(all_dependency_types));
-    all_groups
-  }
+    let mut semver_groups = vec![SemverGroup::get_exact_local_specifiers()];
+    for group_config in raw.semver_groups {
+      let semver_group = SemverGroup::from_config(group_config);
+      validate_or_exit(semver_group.selector.validate_dependency_types(&all_dependency_types));
+      semver_groups.push(semver_group);
+    }
+    semver_groups.push(SemverGroup::get_catch_all());
+    raw.version_groups.iter().for_each(|group| {
+      validate_or_exit(validate_raw_dep_types(&group.dependency_types, &all_dependency_types));
+    });
 
-  /// Get all custom types defined in the rcfile, combined with the default
-  /// types.
-  pub fn get_all_dependency_types(&self) -> Vec<DependencyType> {
-    // Custom dependency types defined in the rcfile
-    let custom_types = &self.custom_types;
-    // Internal dependency types are also defined as custom types
-    let default_types = HashMap::from([
-      (
-        String::from("dev"),
-        CustomType {
-          strategy: String::from("versionsByName"),
-          name_path: None,
-          path: String::from("devDependencies"),
-          unknown_fields: HashMap::new(),
-        },
-      ),
-      (
-        String::from("local"),
-        CustomType {
-          strategy: String::from("name~version"),
-          name_path: Some(String::from("name")),
-          path: String::from("version"),
-          unknown_fields: HashMap::new(),
-        },
-      ),
-      (
-        String::from("overrides"),
-        CustomType {
-          strategy: String::from("versionsByName"),
-          name_path: None,
-          path: String::from("overrides"),
-          unknown_fields: HashMap::new(),
-        },
-      ),
-      (
-        String::from("peer"),
-        CustomType {
-          strategy: String::from("versionsByName"),
-          name_path: None,
-          path: String::from("peerDependencies"),
-          unknown_fields: HashMap::new(),
-        },
-      ),
-      (
-        String::from("pnpmOverrides"),
-        CustomType {
-          strategy: String::from("versionsByName"),
-          name_path: None,
-          path: String::from("pnpm.overrides"),
-          unknown_fields: HashMap::new(),
-        },
-      ),
-      (
-        String::from("prod"),
-        CustomType {
-          strategy: String::from("versionsByName"),
-          name_path: None,
-          path: String::from("dependencies"),
-          unknown_fields: HashMap::new(),
-        },
-      ),
-      (
-        String::from("resolutions"),
-        CustomType {
-          strategy: String::from("versionsByName"),
-          name_path: None,
-          path: String::from("resolutions"),
-          unknown_fields: HashMap::new(),
-        },
-      ),
-    ]);
-    // Collect which dependency types are enabled
-    let mut dependency_types: Vec<DependencyType> = vec![];
-    default_types.iter().for_each(|(name, custom_type)| {
-      dependency_types.push(DependencyType::new(name, custom_type));
-    });
-    custom_types.iter().for_each(|(name, custom_type)| {
-      dependency_types.push(DependencyType::new(name, custom_type));
-    });
-    dependency_types
+    Rcfile {
+      dependency_groups,
+      format_bugs: raw.format_bugs,
+      format_repository: raw.format_repository,
+      indent: raw.indent,
+      max_concurrent_requests: raw.max_concurrent_requests,
+      semver_groups,
+      sort_az: raw.sort_az,
+      sort_exports: raw.sort_exports,
+      sort_first: raw.sort_first,
+      sort_packages: raw.sort_packages,
+      source: raw.source,
+      strict: raw.strict,
+      version_groups: raw.version_groups,
+      all_dependency_types,
+    }
+  }
+}
+
+#[derive(Debug)]
+pub struct Rcfile {
+  pub dependency_groups: Vec<GroupSelector>,
+  pub format_bugs: bool,
+  pub format_repository: bool,
+  pub indent: Option<String>,
+  pub max_concurrent_requests: usize,
+  pub semver_groups: Vec<SemverGroup>,
+  pub sort_az: Vec<String>,
+  pub sort_exports: Vec<String>,
+  pub sort_first: Vec<String>,
+  pub sort_packages: bool,
+  pub source: Vec<String>,
+  pub strict: bool,
+  pub version_groups: Vec<AnyVersionGroup>,
+  /// All dependency types (built-in + custom). Computed after deserialization.
+  pub all_dependency_types: Vec<DependencyType>,
+}
+
+impl Default for Rcfile {
+  fn default() -> Self {
+    serde_json::from_str::<RawRcfile>("{}")
+      .expect("An empty object should produce a default Rcfile")
+      .into()
+  }
+}
+
+impl Rcfile {
+  /// Create every version group defined in the rcfile.
+  pub fn get_version_groups(&mut self, packages: &Packages) -> Vec<VersionGroup> {
+    let mut all_groups: Vec<VersionGroup> = mem::take(&mut self.version_groups)
+      .into_iter()
+      .map(|group_config| VersionGroup::from_config(group_config, packages))
+      .collect();
+    all_groups.push(VersionGroup::get_catch_all());
+    all_groups
   }
 }

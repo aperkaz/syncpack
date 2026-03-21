@@ -121,7 +121,7 @@ pub fn get_actual(instance: &Instance) -> String {
 }
 
 fn get_local_hint(ctx: &Context, instance: &Instance) -> String {
-  if ctx.config.cli.show_hints && instance.is_local {
+  if ctx.config.cli.show_hints && instance.is_local_instance {
     "(local)".purple().to_string()
   } else {
     "".to_string()

@@ -58,6 +58,13 @@ pub struct InstanceDescriptor {
   /// This aliased name is only used when allocating an `Instance` to a
   /// `Dependency`, the original name is otherwise preserved
   pub internal_name: String,
+  /// Whether this dependency's NAME matches a local package name. For example,
+  /// if package "foo" has `"bar": "^1.0.0"` in devDependencies, and "bar" is
+  /// also a local package, then `is_local_dependency` is true.
+  ///
+  /// Distinct from `Instance::is_local_instance` (which means this instance IS
+  /// a local package's own version declaration).
+  pub is_local_dependency: bool,
   /// Does this instance match the filter options provided via the CLI?
   pub matches_cli_filter: bool,
   /// The dependency name, e.g., "react", "react-dom", "@types/node"
@@ -89,7 +96,7 @@ pub struct Instance {
   /// A unique identifier for this instance
   pub id: InstanceId,
   /// Whether this is a package developed in this repo
-  pub is_local: bool,
+  pub is_local_instance: bool,
   /// If this instance belongs to a `WithRange` semver group, this is the range.
   /// This is used by Version Groups while determining the preferred version,
   /// to try to also satisfy any applicable semver group ranges
@@ -106,12 +113,12 @@ impl Instance {
     let dependency_type_name = &descriptor.dependency_type.path;
     let package_name = descriptor.package.borrow().name.clone();
     let id = format!("{} in {} of {}", &descriptor.name, dependency_type_name, package_name);
-    let is_local = dependency_type_name == "/version";
+    let is_local_instance = dependency_type_name == "/version";
     Instance {
       descriptor,
       expected_specifier: RefCell::new(None),
       id,
-      is_local,
+      is_local_instance,
       preferred_semver_range,
       state: RefCell::new(InstanceState::Unknown),
     }
@@ -295,7 +302,7 @@ impl Instance {
   }
 
   pub fn get_update_url(&self) -> Option<UpdateUrl> {
-    if self.descriptor.matches_cli_filter && !self.is_local {
+    if self.descriptor.matches_cli_filter && !self.is_local_instance {
       let internal_name = &self.descriptor.internal_name;
       let actual_name = &self.descriptor.name;
       let raw = self.descriptor.specifier.get_raw();

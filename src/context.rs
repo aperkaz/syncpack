@@ -7,7 +7,8 @@ use {
     packages::Packages,
     version_group::VersionGroup,
   },
-  log::debug,
+  log::{debug, error},
+  std::{mem, process::exit},
 };
 
 /// The central data structure that owns all project data.
@@ -33,25 +34,28 @@ pub struct Context {
 impl Context {
   /// Read all configuration and package.json files, collect all dependency
   /// instances, and assign them to version groups.
-  pub fn create(config: Config, packages: Packages, catalogs: Option<CatalogsByName>) -> Self {
+  pub fn create(mut config: Config, packages: Packages, catalogs: Option<CatalogsByName>) -> Self {
     let mut instances = vec![];
-    let all_dependency_types = config.rcfile.get_all_dependency_types();
-    let cli_filters = config.cli.get_filters(&packages, &all_dependency_types);
-    let dependency_groups = config.rcfile.get_dependency_groups(&packages, &all_dependency_types);
-    let semver_groups = config.rcfile.get_semver_groups(&packages, &all_dependency_types);
-    let mut version_groups = config.rcfile.get_version_groups(&packages, &all_dependency_types);
+    let dependency_groups = mem::take(&mut config.rcfile.dependency_groups);
+    let semver_groups = mem::take(&mut config.rcfile.semver_groups);
+    let mut version_groups = config.rcfile.get_version_groups(&packages);
+    let all_dependency_types = &config.rcfile.all_dependency_types;
+    if let Some(ref filters) = config.cli.filters {
+      if let Err(msg) = filters.validate_dependency_types(all_dependency_types) {
+        error!("{msg}");
+        error!("check your syncpack config file");
+        exit(1);
+      }
+    }
 
-    packages.get_all_instances(&all_dependency_types, |mut descriptor| {
+    packages.get_all_instances(all_dependency_types, |mut descriptor| {
       let dependency_group = dependency_groups.iter().find(|alias| alias.can_add(&descriptor));
 
       if let Some(group) = dependency_group {
         descriptor.internal_name = group.label.clone();
       }
 
-      descriptor.matches_cli_filter = match cli_filters.as_ref() {
-        Some(filters) => filters.can_add(&descriptor),
-        None => true,
-      };
+      descriptor.matches_cli_filter = config.cli.filters.as_ref().is_none_or(|f| f.can_add(&descriptor));
 
       if !descriptor.matches_cli_filter {
         return;

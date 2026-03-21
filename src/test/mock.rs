@@ -22,12 +22,10 @@ pub fn cli() -> Cli {
     check: true,
     config_path: None,
     cwd: env::current_dir().unwrap(),
-    dependencies: vec![],
-    dependency_types: vec![],
     disable_ansi: true,
     dry_run: true,
+    filters: None,
     log_levels: vec![LevelFilter::Error],
-    packages: vec![],
     reporter: ReporterKind::Pretty,
     show_hints: false,
     show_ignored: false,
@@ -35,7 +33,6 @@ pub fn cli() -> Cli {
     show_status_codes: false,
     sort: SortBy::Name,
     source_patterns: vec![],
-    specifier_types: vec![],
     subcommand: Subcommand::Lint,
     target: UpdateTarget::Latest,
   }
@@ -59,13 +56,12 @@ pub fn config_from_mock(value: serde_json::Value) -> Config {
 
 /// Create an empty Rcfile struct
 pub fn rcfile() -> Rcfile {
-  let empty_json = "{}".to_string();
-  serde_json::from_str::<Rcfile>(&empty_json).unwrap()
+  Rcfile::default()
 }
 
 /// Create an Rcfile struct from a mocked .syncpackrc
 pub fn rcfile_from_mock(value: serde_json::Value) -> Rcfile {
-  serde_json::from_value::<Rcfile>(value).unwrap()
+  serde_json::from_value::<crate::rcfile::RawRcfile>(value).unwrap().into()
 }
 
 /// Parse a package.json string

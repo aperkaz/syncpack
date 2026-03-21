@@ -1,14 +1,14 @@
 use {
   crate::{
     cli::Cli,
-    rcfile::{error::RcfileError, Rcfile},
+    rcfile::{error::RcfileError, RawRcfile},
   },
   log::debug,
   serde_json::Value,
   std::fs,
 };
 
-pub fn try_from_package_json_config_property(cli: &Cli) -> Option<Result<Rcfile, RcfileError>> {
+pub fn try_from_package_json_config_property(cli: &Cli) -> Option<Result<RawRcfile, RcfileError>> {
   let package_json_path = cli.cwd.join("package.json");
   package_json_path
     .exists()

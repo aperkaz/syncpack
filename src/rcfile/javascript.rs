@@ -3,14 +3,14 @@ use {
     cli::Cli,
     rcfile::{
       error::{NodeJsResult, RcfileError},
-      Rcfile,
+      RawRcfile,
     },
   },
   log::debug,
   std::{path::Path, process::Command},
 };
 
-pub fn from_javascript_path(file_path: &Path) -> Result<Rcfile, RcfileError> {
+pub fn from_javascript_path(file_path: &Path) -> Result<RawRcfile, RcfileError> {
   let escaped_file_path_for_nodejs = file_path.to_string_lossy().replace('\\', "\\\\");
   let nodejs_script = format!(
     r#"
@@ -102,7 +102,7 @@ pub fn from_javascript_path(file_path: &Path) -> Result<Rcfile, RcfileError> {
     })
     .and_then(|json_str| serde_json::from_str::<NodeJsResult>(&json_str).map_err(RcfileError::JsonParseFailed))
     .and_then(|response| match response {
-      NodeJsResult::Success { value } => serde_json::from_str::<Rcfile>(&value).map_err(RcfileError::InvalidConfig),
+      NodeJsResult::Success { value } => serde_json::from_str::<RawRcfile>(&value).map_err(RcfileError::InvalidConfig),
       NodeJsResult::Error {
         import_error,
         require_error,
@@ -113,7 +113,7 @@ pub fn from_javascript_path(file_path: &Path) -> Result<Rcfile, RcfileError> {
     })
 }
 
-pub fn try_from_js_candidates(cli: &Cli) -> Option<Result<Rcfile, RcfileError>> {
+pub fn try_from_js_candidates(cli: &Cli) -> Option<Result<RawRcfile, RcfileError>> {
   let candidates = vec![
     ".syncpackrc.js",
     ".syncpackrc.ts",

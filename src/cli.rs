@@ -1,5 +1,5 @@
 use {
-  crate::{dependency_type::DependencyType, group_selector::GroupSelector, packages::Packages},
+  crate::group_selector::GroupSelector,
   clap::{builder::ValueParser, crate_description, crate_name, crate_version, Arg, ArgMatches, Command},
   color_print::cformat,
   itertools::Itertools,
@@ -56,14 +56,9 @@ pub struct Cli {
   pub disable_ansi: bool,
   /// Whether to simulate changes without writing them to disk
   pub dry_run: bool,
-  /// - `--dependencies` to filter by dependency name
-  pub dependencies: Vec<String>,
-  /// - `--dependency-types` to filter by dependency type
-  pub dependency_types: Vec<String>,
-  /// - `--packages` to filter by package name
-  pub packages: Vec<String>,
-  /// - `--specifier-types` to filter by specifier type
-  pub specifier_types: Vec<String>,
+  /// CLI filter combining --dependencies, --dependency-types, --packages,
+  /// and --specifier-types options into a single GroupSelector
+  pub filters: Option<GroupSelector>,
   /// Which severity levels of logging to display
   #[allow(dead_code)]
   pub log_levels: Vec<LevelFilter>,
@@ -96,12 +91,10 @@ impl Default for Cli {
       check: false,
       config_path: None,
       cwd: env::current_dir().unwrap_or_default(),
-      dependencies: Vec::new(),
-      dependency_types: Vec::new(),
       disable_ansi: false,
       dry_run: false,
+      filters: None,
       log_levels: vec![LevelFilter::Warn],
-      packages: Vec::new(),
       reporter: ReporterKind::Pretty,
       show_hints: false,
       show_ignored: false,
@@ -109,7 +102,6 @@ impl Default for Cli {
       show_status_codes: false,
       sort: SortBy::Name,
       source_patterns: vec!["package.json".to_string(), "**/package.json".to_string()],
-      specifier_types: Vec::new(),
       subcommand: Subcommand::Lint,
       target: UpdateTarget::Latest,
     }
@@ -120,16 +112,29 @@ impl Cli {
   /// Parse all command-line arguments from the user into a `Cli` struct
   pub fn parse() -> Self {
     fn from_arg_matches(subcommand: Subcommand, matches: &ArgMatches) -> Cli {
+      let dependencies = get_patterns(matches, "dependencies");
+      let dependency_types = get_patterns(matches, "dependency-types");
+      let packages = get_patterns(matches, "packages");
+      let specifier_types = get_patterns(matches, "specifier-types");
+      let filters = if dependencies.is_empty() && dependency_types.is_empty() && packages.is_empty() && specifier_types.is_empty() {
+        None
+      } else {
+        Some(GroupSelector::new(
+          dependencies,
+          dependency_types,
+          "CLI filters".to_string(),
+          packages,
+          specifier_types,
+        ))
+      };
       Cli {
         check: (matches!(&subcommand, Subcommand::Format | Subcommand::Update)) && matches.get_flag("check"),
         config_path: matches.get_one::<String>("config").cloned(),
         cwd: env::current_dir().unwrap(),
-        dependencies: get_patterns(matches, "dependencies"),
-        dependency_types: get_patterns(matches, "dependency-types"),
         disable_ansi: matches.get_flag("no-ansi"),
         dry_run: (matches!(&subcommand, Subcommand::Fix | Subcommand::Format | Subcommand::Update)) && matches.get_flag("dry-run"),
+        filters,
         log_levels: get_log_levels(matches),
-        packages: get_patterns(matches, "packages"),
         reporter: get_reporter(&subcommand, matches),
         show_hints: should_show(matches, "hints"),
         show_ignored: should_show(matches, "ignored"),
@@ -137,7 +142,6 @@ impl Cli {
         show_status_codes: should_show(matches, "statuses"),
         sort: get_order_by(matches),
         source_patterns: get_patterns(matches, "source"),
-        specifier_types: get_patterns(matches, "specifier-types"),
         subcommand,
         target: get_target(matches),
       }
@@ -165,28 +169,6 @@ impl Cli {
       _ => {
         std::process::exit(1);
       }
-    }
-  }
-
-  /// Create a `GroupSelector` struct based on the provided command line options
-  /// which relate to filtering of packages and dependencies.
-  ///
-  /// `GroupSelector` is the same struct as used by `VersionGroup` and
-  /// `SemverGroup` and this CLI `GroupSelector`, when configured, serves as a
-  /// single `VersionGroup` which overrides all those set in config.
-  pub fn get_filters(&self, packages: &Packages, all_dependency_types: &[DependencyType]) -> Option<GroupSelector> {
-    if self.dependencies.is_empty() && self.dependency_types.is_empty() && self.packages.is_empty() && self.specifier_types.is_empty() {
-      None
-    } else {
-      Some(GroupSelector::new(
-        /* all_packages: */ packages,
-        /* include_dependencies: */ self.dependencies.clone(),
-        /* include_dependency_types: */ self.dependency_types.clone(),
-        /* alias_name: */ "CLI filters".to_string(),
-        /* include_packages: */ self.packages.clone(),
-        /* include_specifier_types: */ self.specifier_types.clone(),
-        /* all_dependency_types: */ all_dependency_types,
-      ))
     }
   }
 }

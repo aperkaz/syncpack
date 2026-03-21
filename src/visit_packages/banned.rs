@@ -19,7 +19,7 @@ pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
     let instance = &ctx.instances[idx.0];
     let actual_specifier = &instance.descriptor.specifier;
     debug!("{L2}visit instance '{}' ({actual_specifier:?})", instance.id);
-    if instance.is_local {
+    if instance.is_local_instance {
       debug!("{L3}it is the local instance of a package developed locally in this monorepo");
       debug!("{L4}refuse to change it");
       debug!("{L5}mark as suspect, user should change their config");

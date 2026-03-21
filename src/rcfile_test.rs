@@ -1,4 +1,7 @@
-use {crate::rcfile::Rcfile, serde_json::json};
+use {
+  crate::rcfile::{RawRcfile, Rcfile},
+  serde_json::json,
+};
 
 #[test]
 fn default_format_bugs_is_false() {
@@ -18,7 +21,7 @@ fn detects_v13_dependency_types_in_config() {
     "dependencyTypes": ["prod", "dev"],
     "versionGroups": []
   });
-  let rcfile: Rcfile = serde_json::from_value(config_json).unwrap();
+  let rcfile: RawRcfile = serde_json::from_value(config_json).unwrap();
   assert!(rcfile.unknown_fields.contains_key("dependencyTypes"));
 }
 
@@ -28,7 +31,7 @@ fn detects_v13_specifier_types_in_config() {
     "specifierTypes": ["exact", "range"],
     "versionGroups": []
   });
-  let rcfile: Rcfile = serde_json::from_value(config_json).unwrap();
+  let rcfile: RawRcfile = serde_json::from_value(config_json).unwrap();
   assert!(rcfile.unknown_fields.contains_key("specifierTypes"));
 }
 
@@ -38,7 +41,7 @@ fn detects_v13_lint_formatting_in_config() {
     "lintFormatting": true,
     "versionGroups": []
   });
-  let rcfile: Rcfile = serde_json::from_value(config_json).unwrap();
+  let rcfile: RawRcfile = serde_json::from_value(config_json).unwrap();
   assert!(rcfile.unknown_fields.contains_key("lintFormatting"));
 }
 
@@ -48,7 +51,7 @@ fn detects_v13_lint_semver_ranges_in_config() {
     "lintSemverRanges": true,
     "versionGroups": []
   });
-  let rcfile: Rcfile = serde_json::from_value(config_json).unwrap();
+  let rcfile: RawRcfile = serde_json::from_value(config_json).unwrap();
   assert!(rcfile.unknown_fields.contains_key("lintSemverRanges"));
 }
 
@@ -58,7 +61,7 @@ fn detects_v13_lint_versions_in_config() {
     "lintVersions": true,
     "versionGroups": []
   });
-  let rcfile: Rcfile = serde_json::from_value(config_json).unwrap();
+  let rcfile: RawRcfile = serde_json::from_value(config_json).unwrap();
   assert!(rcfile.unknown_fields.contains_key("lintVersions"));
 }
 
@@ -72,7 +75,7 @@ fn detects_multiple_v13_properties_in_config() {
     "lintVersions": true,
     "versionGroups": []
   });
-  let rcfile: Rcfile = serde_json::from_value(config_json).unwrap();
+  let rcfile: RawRcfile = serde_json::from_value(config_json).unwrap();
   assert_eq!(rcfile.unknown_fields.len(), 5);
   assert!(rcfile.unknown_fields.contains_key("dependencyTypes"));
   assert!(rcfile.unknown_fields.contains_key("specifierTypes"));
@@ -89,6 +92,6 @@ fn valid_v14_config_has_no_unknown_fields() {
     "indent": "  ",
     "source": ["packages/*/package.json"]
   });
-  let rcfile: Rcfile = serde_json::from_value(config_json).unwrap();
+  let rcfile: RawRcfile = serde_json::from_value(config_json).unwrap();
   assert_eq!(rcfile.unknown_fields.len(), 0);
 }
