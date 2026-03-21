@@ -80,36 +80,37 @@ impl Packages {
   {
     // Pre-compute local package names for O(1) is_local_dependency lookups
     let local_package_names: HashSet<String> = self.all.iter().map(|p| p.borrow().name.clone()).collect();
+    let empty_version = Value::String(String::new());
 
     for package in self.all.iter() {
+      let pkg = package.borrow();
+      let contents = pkg.contents.borrow();
       for dependency_type in all_dependency_types {
         match dependency_type.strategy {
           Strategy::NameAndVersionProps => {
-            if let (Some(Value::String(name)), Some(Value::String(raw_specifier))) = (
-              package.borrow().get_prop(dependency_type.name_path.as_ref().unwrap()),
-              package.borrow().get_prop(&dependency_type.path).or_else(|| {
-                // Ensure that instances are still created for local packages
-                // which are missing a version
-                if dependency_type.name == "local" {
-                  Some(Value::String("".to_string()))
-                } else {
-                  None
-                }
-              }),
-            ) {
+            let name_path = dependency_type.name_path.as_ref().unwrap();
+            let name_val = contents.pointer(name_path);
+            let version_val = contents.pointer(&dependency_type.path).or_else(|| {
+              if dependency_type.name == "local" {
+                Some(&empty_version)
+              } else {
+                None
+              }
+            });
+            if let (Some(Value::String(name)), Some(Value::String(raw_specifier))) = (name_val, version_val) {
               on_instance(InstanceDescriptor {
                 dependency_type: dependency_type.clone(),
                 internal_name: name.to_string(),
-                is_local_dependency: local_package_names.contains(&name),
+                is_local_dependency: local_package_names.contains(name.as_str()),
                 matches_cli_filter: false,
                 name: name.to_string(),
                 package: Rc::clone(package),
-                specifier: Specifier::new(&raw_specifier),
+                specifier: Specifier::new(raw_specifier),
               });
             }
           }
           Strategy::NamedVersionString => {
-            if let Some(Value::String(specifier)) = package.borrow().get_prop(&dependency_type.path) {
+            if let Some(Value::String(specifier)) = contents.pointer(&dependency_type.path) {
               if let Some((name, raw_specifier)) = specifier.split_once('@') {
                 on_instance(InstanceDescriptor {
                   dependency_type: dependency_type.clone(),
@@ -124,7 +125,7 @@ impl Packages {
             }
           }
           Strategy::UnnamedVersionString => {
-            if let Some(Value::String(raw_specifier)) = package.borrow().get_prop(&dependency_type.path) {
+            if let Some(Value::String(raw_specifier)) = contents.pointer(&dependency_type.path) {
               on_instance(InstanceDescriptor {
                 dependency_type: dependency_type.clone(),
                 internal_name: dependency_type.name.clone(),
@@ -132,22 +133,22 @@ impl Packages {
                 matches_cli_filter: false,
                 name: dependency_type.name.clone(),
                 package: Rc::clone(package),
-                specifier: Specifier::new(&raw_specifier),
+                specifier: Specifier::new(raw_specifier),
               });
             }
           }
           Strategy::VersionsByName => {
-            if let Some(Value::Object(versions_by_name)) = package.borrow().get_prop(&dependency_type.path) {
+            if let Some(Value::Object(versions_by_name)) = contents.pointer(&dependency_type.path) {
               for (name, raw_specifier) in versions_by_name {
                 if let Value::String(raw_specifier) = raw_specifier {
                   on_instance(InstanceDescriptor {
                     dependency_type: dependency_type.clone(),
                     internal_name: name.to_string(),
-                    is_local_dependency: local_package_names.contains(&name),
+                    is_local_dependency: local_package_names.contains(name.as_str()),
                     matches_cli_filter: false,
                     name: name.to_string(),
                     package: Rc::clone(package),
-                    specifier: Specifier::new(&raw_specifier),
+                    specifier: Specifier::new(raw_specifier),
                   });
                 }
               }
