@@ -1,6 +1,7 @@
 use {
   super::indent::{L1, L2, L3, L4, L5, L6, L7, L8, L9},
   crate::{
+    context::Context,
     instance_state::{FixableInstance, UnfixableInstance, ValidInstance},
     semver_range::SemverRange,
   },
@@ -18,52 +19,53 @@ fn is_safe_range(range: &SemverRange) -> bool {
   matches!(range, SemverRange::Exact | SemverRange::Patch)
 }
 
-pub fn visit(dependency: &crate::dependency::Dependency) {
+pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
+  let arena = &ctx.instances;
   debug!("visit same minor version group");
   debug!("{L1}visit dependency '{}'", dependency.internal_name);
 
   // ── Non-semver gate ──────────────────────────────────────────────────
-  // If no instance has a semver version, we fall into the non-semver branch.
-  // This mirrors preferred_semver.rs: no per-instance semver/non-semver split.
   let any_has_semver = dependency
     .instances
     .iter()
-    .any(|i| i.descriptor.specifier.get_node_version().is_some());
+    .any(|idx| arena[idx.0].descriptor.specifier.get_node_version().is_some());
 
   if !any_has_semver {
     debug!("{L2}no instances have a semver version");
-    if dependency.every_specifier_is_already_identical() {
+    if dependency.every_specifier_is_already_identical(arena) {
       debug!("{L3}but all are identical");
-      dependency.instances.iter().for_each(|instance| {
+      for &idx in &dependency.instances {
+        let instance = &arena[idx.0];
         let actual_specifier = &instance.descriptor.specifier;
         debug!("{L4}visit instance '{}' ({actual_specifier:?})", instance.id);
         instance.mark_valid(ValidInstance::IsNonSemverButIdentical, actual_specifier);
-      });
+      }
     } else {
       debug!("{L3}and they differ");
-      dependency.instances.iter().for_each(|instance| {
+      for &idx in &dependency.instances {
+        let instance = &arena[idx.0];
         let actual_specifier = &instance.descriptor.specifier;
         debug!("{L4}visit instance '{}' ({actual_specifier:?})", instance.id);
         instance.mark_unfixable(UnfixableInstance::NonSemverMismatch);
-      });
+      }
     }
     return;
   }
 
   // ── Major-mismatch gate ──────────────────────────────────────────────
-  // Compute once before the per-instance loop (O(n) not O(n²)).
   let all_same_major = dependency
     .instances
     .first()
-    .is_some_and(|first| first.already_has_same_major_as_all(&dependency.instances));
+    .is_some_and(|idx| arena[idx.0].already_has_same_major_as_all(&dependency.instances, arena));
 
   if !all_same_major {
     debug!("{L2}instances have differing MAJOR versions");
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
       instance.mark_unfixable(UnfixableInstance::SameMinorHasMajorMismatch);
-    });
+    }
     return;
   }
 
@@ -73,12 +75,11 @@ pub fn visit(dependency: &crate::dependency::Dependency) {
   let all_same_minor = dependency
     .instances
     .first()
-    .is_some_and(|first| first.already_has_same_minor_number_as_all(&dependency.instances));
+    .is_some_and(|idx| arena[idx.0].already_has_same_minor_number_as_all(&dependency.instances, arena));
 
   if all_same_minor {
     debug!("{L3}all instances share the same MAJOR.MINOR");
-    // No fix target needed — patch may differ, that's allowed.
-    visit_instances_at_correct_minor(dependency);
+    visit_instances_at_correct_minor(dependency, arena);
     return;
   }
 
@@ -87,40 +88,42 @@ pub fn visit(dependency: &crate::dependency::Dependency) {
   // ── preferVersion branching ──────────────────────────────────────────
   if dependency.prefer_version.is_none() {
     debug!("{L4}preferVersion is not set");
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L5}visit instance '{}' ({actual_specifier:?})", instance.id);
       instance.mark_unfixable(UnfixableInstance::SameMinorMismatch);
-    });
+    }
     return;
   }
 
   // preferVersion is set — compute the fix target once.
-  let fix_target = dependency.get_highest_or_lowest_minor_specifier();
+  let fix_target = dependency.get_highest_or_lowest_minor_specifier(arena);
   if fix_target.is_none() {
     debug!("{L4}could not determine a fix target");
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L5}visit instance '{}' ({actual_specifier:?})", instance.id);
       instance.mark_unfixable(UnfixableInstance::SameMinorMismatch);
-    });
+    }
     return;
   }
   let fix_target = fix_target.unwrap();
   let fix_target_version = fix_target.get_node_version().unwrap();
   debug!("{L4}fix target is {fix_target:?}");
 
-  dependency.instances.iter().for_each(|instance| {
+  for &idx in &dependency.instances {
+    let instance = &arena[idx.0];
     let actual_specifier = &instance.descriptor.specifier;
     debug!("{L5}visit instance '{}' ({actual_specifier:?})", instance.id);
 
     let instance_version = match actual_specifier.get_node_version() {
       Some(v) => v,
       None => {
-        // Non-semver instance in a mixed group — treat as mismatch
         debug!("{L6}instance has no semver version");
         instance.mark_unfixable(UnfixableInstance::NonSemverMismatch);
-        return;
+        continue;
       }
     };
 
@@ -128,26 +131,24 @@ pub fn visit(dependency: &crate::dependency::Dependency) {
 
     if is_at_target_minor {
       debug!("{L6}instance IS at the target MAJOR.MINOR");
-      // Identical to "all same MAJOR.MINOR" subtree
       visit_instance_at_correct_minor(instance, actual_specifier);
     } else {
       debug!("{L6}instance is NOT at the target MAJOR.MINOR");
-      // Determine the range for the fix target
       let fix_specifier = determine_fix_specifier_for_wrong_minor(instance, actual_specifier, &fix_target);
       debug!("{L7}fix target with range applied: {fix_specifier:?}");
       instance.mark_fixable(FixableInstance::DiffersToHighestOrLowestSemverMinor, &fix_specifier);
     }
-  });
+  }
 }
 
 /// Process all instances when they all share the same MAJOR.MINOR.
-/// No fix target needed — just handle semver range correctness.
-fn visit_instances_at_correct_minor(dependency: &crate::dependency::Dependency) {
-  dependency.instances.iter().for_each(|instance| {
+fn visit_instances_at_correct_minor(dependency: &crate::dependency::Dependency, arena: &[crate::instance::Instance]) {
+  for &idx in &dependency.instances {
+    let instance = &arena[idx.0];
     let actual_specifier = &instance.descriptor.specifier;
     debug!("{L4}visit instance '{}' ({actual_specifier:?})", instance.id);
     visit_instance_at_correct_minor(instance, actual_specifier);
-  });
+  }
 }
 
 /// Process a single instance that already has the correct MAJOR.MINOR.

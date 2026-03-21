@@ -132,6 +132,12 @@ pub async fn context_with_registry_updates(
 ) -> (Context, RegistryUpdates) {
   let client: Arc<dyn RegistryClient> = Arc::new(MockRegistryClient::from_json(mock_updates));
   let ctx = Context::create(config, packages, catalogs);
-  let updates = RegistryUpdates::fetch(&client, &ctx.version_groups, ctx.config.rcfile.max_concurrent_requests).await;
+  let updates = RegistryUpdates::fetch(
+    &client,
+    &ctx.version_groups,
+    &ctx.instances,
+    ctx.config.rcfile.max_concurrent_requests,
+  )
+  .await;
   (ctx, updates)
 }

@@ -86,7 +86,13 @@ async fn main() {
     }
     Subcommand::Update => {
       let client: Arc<dyn registry_client::RegistryClient> = Arc::new(LiveRegistryClient::new());
-      let updates = RegistryUpdates::fetch(&client, &ctx.version_groups, ctx.config.rcfile.max_concurrent_requests).await;
+      let updates = RegistryUpdates::fetch(
+        &client,
+        &ctx.version_groups,
+        &ctx.instances,
+        ctx.config.rcfile.max_concurrent_requests,
+      )
+      .await;
       let ctx = visit_packages(ctx, Some(&updates));
       update::run(ctx, &updates)
     }

@@ -1,6 +1,7 @@
 use {
   super::indent::{L1, L2, L3, L4, L5},
   crate::{
+    context::Context,
     instance_state::{FixableInstance, SuspectInstance},
     specifier::Specifier,
   },
@@ -11,10 +12,11 @@ use {
 #[path = "banned_test.rs"]
 mod banned_test;
 
-pub fn visit(dependency: &crate::dependency::Dependency) {
+pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
   debug!("visit banned version group");
   debug!("{L1}visit dependency '{}'", dependency.internal_name);
-  dependency.instances.iter().for_each(|instance| {
+  for &idx in &dependency.instances {
+    let instance = &ctx.instances[idx.0];
     let actual_specifier = &instance.descriptor.specifier;
     debug!("{L2}visit instance '{}' ({actual_specifier:?})", instance.id);
     if instance.is_local {
@@ -27,5 +29,5 @@ pub fn visit(dependency: &crate::dependency::Dependency) {
       debug!("{L4}mark as error");
       instance.mark_fixable(FixableInstance::IsBanned, &Specifier::new(""));
     }
-  });
+  }
 }

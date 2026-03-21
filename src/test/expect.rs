@@ -68,12 +68,7 @@ impl<'a> Expects<'a> {
   }
 
   pub fn to_have_instances(&self, expected_instances: Vec<ExpectedInstance>) -> &Self {
-    let actual_instances = &self
-      .ctx
-      .instances
-      .iter()
-      .map(|instance| ActualInstance::new(instance))
-      .collect::<Vec<ActualInstance>>();
+    let actual_instances = &self.ctx.instances.iter().map(ActualInstance::new).collect::<Vec<ActualInstance>>();
     let actual_len = actual_instances.len();
     let expected_len = expected_instances.len();
     if actual_len != expected_len {

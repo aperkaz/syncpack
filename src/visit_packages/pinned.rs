@@ -1,6 +1,9 @@
 use {
   super::indent::{L1, L2, L3, L4, L5, L6, L7, L8},
-  crate::instance_state::{FixableInstance, SuspectInstance, ValidInstance},
+  crate::{
+    context::Context,
+    instance_state::{FixableInstance, SuspectInstance, ValidInstance},
+  },
   log::debug,
 };
 
@@ -8,12 +11,13 @@ use {
 #[path = "pinned_test.rs"]
 mod pinned_test;
 
-pub fn visit(dependency: &crate::dependency::Dependency) {
+pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
   debug!("visit pinned version group");
   debug!("{L1}visit dependency '{}'", dependency.internal_name);
   let pinned_specifier = dependency.pinned_specifier.clone().unwrap();
   dependency.set_expected_specifier(&pinned_specifier);
-  dependency.instances.iter().for_each(|instance| {
+  for &idx in &dependency.instances {
+    let instance = &ctx.instances[idx.0];
     let actual_specifier = &instance.descriptor.specifier;
     debug!("{L2}visit instance '{}' ({actual_specifier:?})", instance.id);
     if instance.is_local {
@@ -21,13 +25,13 @@ pub fn visit(dependency: &crate::dependency::Dependency) {
       debug!("{L4}refuse to change it");
       debug!("{L5}mark as error, user should change their config");
       instance.mark_suspect(SuspectInstance::RefuseToPinLocal);
-      return;
+      continue;
     }
     if instance.already_equals(&pinned_specifier) {
       debug!("{L3}it is identical to the pinned version");
       debug!("{L4}mark as valid");
       instance.mark_valid(ValidInstance::IsIdenticalToPin, &pinned_specifier);
-      return;
+      continue;
     }
     debug!("{L3}it depends on the local instance");
     debug!("{L4}its version number (without a range):");
@@ -35,7 +39,7 @@ pub fn visit(dependency: &crate::dependency::Dependency) {
       debug!("{L5}differs to the pinned version");
       debug!("{L6}mark as error");
       instance.mark_fixable(FixableInstance::DiffersToPin, &pinned_specifier);
-      return;
+      continue;
     }
     debug!("{L5}is the same as the pinned version");
     if instance.must_match_preferred_semver_range_which_differs_to(&pinned_specifier) {
@@ -52,11 +56,11 @@ pub fn visit(dependency: &crate::dependency::Dependency) {
         debug!("{L8}2. mark as suspect (the config is asking for a different range AND they want to pin it)");
         instance.mark_fixable(FixableInstance::PinOverridesSemverRangeMismatch, &pinned_specifier);
       }
-      return;
+      continue;
     }
     debug!("{L6}it is not in a semver group which prefers a different semver range to the pinned version");
     debug!("{L7}it differs to the pinned version");
     debug!("{L8}mark as error");
     instance.mark_fixable(FixableInstance::DiffersToPin, &pinned_specifier);
-  });
+  }
 }

@@ -11,7 +11,7 @@ pub fn run(ctx: Context) -> i32 {
       ui::group::print_header(&ctx, group);
       group.get_sorted_dependencies(&ctx.config.cli.sort).for_each(|dependency| {
         ui::dependency::print(&ctx, dependency, &group.variant);
-        dependency.get_sorted_instances().for_each(|instance| {
+        dependency.get_sorted_instances(&ctx.instances).for_each(|instance| {
           if ctx.config.cli.show_instances {
             ui::instance::print(&ctx, instance);
           }

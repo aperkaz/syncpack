@@ -13,7 +13,7 @@ pub fn run(ctx: Context, reporter: &dyn FixReporter) -> i32 {
       group.get_sorted_dependencies(&ctx.config.cli.sort).for_each(|dependency| {
         let mut has_printed_dependency = false;
         dependency
-          .get_sorted_instances()
+          .get_sorted_instances(&ctx.instances)
           .inspect(|instance| {
             if instance.is_unfixable() || instance.is_suspect() && ctx.config.rcfile.strict {
               contains_unfixable_issues = true

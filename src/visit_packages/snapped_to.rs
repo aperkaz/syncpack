@@ -13,12 +13,14 @@ use {
 mod snapped_to_test;
 
 pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
+  let arena = &ctx.instances;
   debug!("visit snapped to version group");
   debug!("{L1}visit dependency '{}'", dependency.internal_name);
-  if let Some(snapped_to_specifier) = dependency.get_snapped_to_specifier(&ctx.instances) {
+  if let Some(snapped_to_specifier) = dependency.get_snapped_to_specifier(arena) {
     debug!("{L2}a target version was found ({snapped_to_specifier:?})");
     dependency.set_expected_specifier(&snapped_to_specifier);
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
       if instance.is_local && !instance.already_equals(&snapped_to_specifier) {
@@ -26,7 +28,7 @@ pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
         debug!("{L5}refuse to change it");
         debug!("{L6}mark as error, user should change their config");
         instance.mark_suspect(SuspectInstance::RefuseToSnapLocal);
-        return;
+        continue;
       }
       debug!("{L4}it is not a local instance of a package developed locally in this monorepo");
       debug!("{L5}its version number (without a range):");
@@ -39,7 +41,7 @@ pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
           .and_then(|range| snapped_to_specifier.with_range(range))
           .unwrap_or_else(|| Rc::clone(&snapped_to_specifier));
         instance.mark_fixable(FixableInstance::DiffersToSnapTarget, &fix_target);
-        return;
+        continue;
       }
       debug!("{L6}is the same as the target version");
       let range_of_snapped_to_specifier = snapped_to_specifier.get_semver_range().unwrap();
@@ -84,11 +86,12 @@ pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
           instance.mark_fixable(FixableInstance::DiffersToSnapTarget, &snapped_to_specifier);
         }
       }
-    });
+    }
   } else {
     debug!("{L2}no target version was found");
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       instance.mark_suspect(SuspectInstance::DependsOnMissingSnapTarget);
-    });
+    }
   }
 }

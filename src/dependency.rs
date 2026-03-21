@@ -4,7 +4,7 @@
 //! all three instances are grouped under one Dependency struct.
 //!
 //! Key points:
-//! - Dependency aggregates instances: Vec<Rc<Instance>>
+//! - Dependency aggregates instances: Vec<InstanceIdx> (indices into arena)
 //! - Each Dependency belongs to one VersionGroup
 //! - The variant field determines validation behavior (Banned, Pinned, etc.)
 //!
@@ -13,7 +13,7 @@
 use {
   crate::{
     cli::UpdateTarget,
-    instance::Instance,
+    instance::{Instance, InstanceIdx},
     instance_state::InstanceState,
     package_json::PackageJson,
     registry_updates::RegistryUpdates,
@@ -54,12 +54,10 @@ pub struct Dependency {
   pub expected: RefCell<Option<Rc<Specifier>>>,
   /// Whether the internal name for this dependency is an alias.
   pub has_alias: bool,
-  /// Every instance of this dependency in this version group.
-  /// Rc<Instance> allows cheap sharing without cloning.
-  pub instances: Vec<Rc<Instance>>,
-  /// If this dependency is a local package, this is the local instance.
-  /// RefCell allows mutation during inspection.
-  pub local_instance: RefCell<Option<Rc<Instance>>>,
+  /// Indices into the Context.instances arena.
+  pub instances: Vec<InstanceIdx>,
+  /// If this dependency is a local package, this is the local instance index.
+  pub local_instance: RefCell<Option<InstanceIdx>>,
   /// Does every instance match the filter options provided via the CLI?
   pub matches_cli_filter: bool,
   /// The name of the dependency, e.g., "react", "@types/node"
@@ -99,35 +97,35 @@ impl Dependency {
     }
   }
 
-  pub fn get_update_url(&self) -> Option<UpdateUrl> {
+  pub fn get_update_url(&self, arena: &[Instance]) -> Option<UpdateUrl> {
     if self.matches_cli_filter && self.internal_name_is_supported() {
-      self.instances.iter().find_map(|instance| instance.get_update_url())
+      self.instances.iter().find_map(|idx| arena[idx.0].get_update_url())
     } else {
       None
     }
   }
 
-  pub fn add_instance(&mut self, instance: Rc<Instance>) {
-    self.instances.push(Rc::clone(&instance));
+  pub fn add_instance(&mut self, idx: InstanceIdx, instance: &Instance) {
+    self.instances.push(idx);
     if instance.is_local {
-      *self.local_instance.borrow_mut() = Some(Rc::clone(&instance));
+      *self.local_instance.borrow_mut() = Some(idx);
     }
   }
 
   /// Return the most severe state of all instances in this group
-  pub fn get_state(&self) -> InstanceState {
+  pub fn get_state(&self, arena: &[Instance]) -> InstanceState {
     self
       .instances
       .iter()
-      .fold(InstanceState::Unknown, |acc, instance| acc.max(instance.state.borrow().clone()))
+      .fold(InstanceState::Unknown, |acc, idx| acc.max(arena[idx.0].state.borrow().clone()))
   }
 
   /// Return every instance state which applies to this group
-  pub fn get_states(&self) -> Vec<InstanceState> {
+  pub fn get_states(&self, arena: &[Instance]) -> Vec<InstanceState> {
     self
       .instances
       .iter()
-      .map(|instance| instance.state.borrow().clone())
+      .map(|idx| arena[idx.0].state.borrow().clone())
       .collect::<Vec<InstanceState>>()
   }
 
@@ -138,12 +136,12 @@ impl Dependency {
   }
 
   /// Return the local instance's version specifier, if it exists
-  pub fn get_local_specifier(&self) -> Option<Rc<Specifier>> {
+  pub fn get_local_specifier(&self, arena: &[Instance]) -> Option<Rc<Specifier>> {
     self
       .local_instance
       .borrow()
       .as_ref()
-      .map(|instance| Rc::clone(&instance.descriptor.specifier))
+      .map(|idx| Rc::clone(&arena[idx.0].descriptor.specifier))
   }
 
   /// Whether the dependency name is a valid npm package name, is invalid, or
@@ -163,17 +161,18 @@ impl Dependency {
 
   /// Is this dependency a package developed in this repository, which has a
   /// missing or invalid .version property?
-  pub fn has_local_instance_with_invalid_specifier(&self) -> bool {
+  pub fn has_local_instance_with_invalid_specifier(&self, arena: &[Instance]) -> bool {
     self
-      .get_local_specifier()
+      .get_local_specifier(arena)
       .is_some_and(|local| !matches!(&*local, Specifier::Exact(_)))
   }
 
   /// Does every instance in this group have a specifier which is exactly the
   /// same?
-  pub fn every_specifier_is_already_identical(&self) -> bool {
-    if let Some(first_actual) = self.instances.first().map(|instance| &instance.descriptor.specifier) {
-      self.instances.iter().all(|instance| {
+  pub fn every_specifier_is_already_identical(&self, arena: &[Instance]) -> bool {
+    if let Some(first_actual) = self.instances.first().map(|idx| &arena[idx.0].descriptor.specifier) {
+      self.instances.iter().all(|idx| {
+        let instance = &arena[idx.0];
         Rc::ptr_eq(&instance.descriptor.specifier, first_actual) || instance.descriptor.specifier.get_raw() == first_actual.get_raw()
       })
     } else {
@@ -181,10 +180,10 @@ impl Dependency {
     }
   }
 
-  pub fn get_unique_specifiers(&self) -> Vec<Rc<Specifier>> {
+  pub fn get_unique_specifiers(&self, arena: &[Instance]) -> Vec<Rc<Specifier>> {
     let mut unique_specifiers = Vec::new();
-    for instance in self.instances.iter() {
-      let spec = &instance.descriptor.specifier;
+    for idx in self.instances.iter() {
+      let spec = &arena[idx.0].descriptor.specifier;
       if !unique_specifiers.iter().any(|s: &Rc<Specifier>| s.get_raw() == spec.get_raw()) {
         unique_specifiers.push(Rc::clone(spec));
       }
@@ -199,14 +198,14 @@ impl Dependency {
   /// ranges are applied before comparison (greedy-range tiebreaker). Returns
   /// the winning specifier with its version number intact — range is applied
   /// per-instance later by the visitor based on safe/unsafe rules.
-  pub fn get_highest_or_lowest_minor_specifier(&self) -> Option<Rc<Specifier>> {
+  pub fn get_highest_or_lowest_minor_specifier(&self, arena: &[Instance]) -> Option<Rc<Specifier>> {
     let prefer_highest = match &self.prefer_version {
       Some(PreferVersion::HighestSemver) => true,
       Some(PreferVersion::LowestSemver) => false,
       None => return None,
     };
     let specifiers = self
-      .get_instances()
+      .get_instances(arena)
       .filter(|instance| instance.descriptor.specifier.get_node_version().is_some())
       .map(|instance| {
         // Apply preferred semver range for comparison (greedy-range tiebreaker)
@@ -240,10 +239,10 @@ impl Dependency {
   /// to produce an adjusted specifier before comparison. This means a semver
   /// group that widens a range (e.g. exact → caret) can promote that instance
   /// to become the highest via the range-greediness tiebreaker.
-  pub fn get_highest_or_lowest_specifier(&self) -> Option<Rc<Specifier>> {
+  pub fn get_highest_or_lowest_specifier(&self, arena: &[Instance]) -> Option<Rc<Specifier>> {
     let prefer_highest = matches!(self.variant, VersionGroupVariant::HighestSemver);
     let specifiers = self
-      .get_instances()
+      .get_instances(arena)
       .filter(|instance| instance.descriptor.specifier.get_node_version().is_some())
       .map(|instance| {
         instance
@@ -270,12 +269,13 @@ impl Dependency {
   /// different updates if they are not on the same minor version.
   pub fn get_eligible_registry_updates(
     &self,
+    arena: &[Instance],
     registry_updates: &RegistryUpdates,
     target: &UpdateTarget,
   ) -> Option<HashMap<String, Vec<Rc<Specifier>>>> {
     registry_updates.updates_by_internal_name.get(&self.internal_name).map(|updates| {
       let mut specifiers_by_eligible_update: HashMap<String, Vec<Rc<Specifier>>> = HashMap::new();
-      self.get_unique_specifiers().iter().for_each(|installed| {
+      self.get_unique_specifiers(arena).iter().for_each(|installed| {
         updates
           .iter()
           .filter(|update| update.is_eligible_update_for(installed, target))
@@ -309,7 +309,7 @@ impl Dependency {
   ///
   /// Even though the actual specifiers on disk might currently match, we should
   /// suggest it match what we the snapped to specifier should be once fixed
-  pub fn get_snapped_to_specifier(&self, every_instance_in_the_project: &[Rc<Instance>]) -> Option<Rc<Specifier>> {
+  pub fn get_snapped_to_specifier(&self, every_instance_in_the_project: &[Instance]) -> Option<Rc<Specifier>> {
     if let Some(snapped_to_packages) = &self.snapped_to_packages {
       for instance in every_instance_in_the_project {
         if *instance.descriptor.internal_name == *self.internal_name {
@@ -325,16 +325,20 @@ impl Dependency {
   }
 
   /// Returns an iterator of each included instance
-  pub fn get_instances(&self) -> impl Iterator<Item = &Rc<Instance>> {
-    self.instances.iter().filter(|instance| instance.descriptor.matches_cli_filter)
+  pub fn get_instances<'a>(&'a self, arena: &'a [Instance]) -> impl Iterator<Item = &'a Instance> {
+    self
+      .instances
+      .iter()
+      .map(move |idx| &arena[idx.0])
+      .filter(|instance| instance.descriptor.matches_cli_filter)
   }
 
   /// Returns an iterator of each included instance, sorted by:
   /// - Valid instances first
   /// - Highest version first
   /// - Package name A-Z when version is equal
-  pub fn get_sorted_instances(&self) -> impl Iterator<Item = &Rc<Instance>> {
-    self.get_instances().sorted_by(|a, b| {
+  pub fn get_sorted_instances<'a>(&'a self, arena: &'a [Instance]) -> impl Iterator<Item = &'a Instance> {
+    self.get_instances(arena).sorted_by(|a, b| {
       if a.is_valid() && !b.is_valid() {
         return Ordering::Less;
       }

@@ -12,7 +12,7 @@ use {
 };
 
 pub fn print(ctx: &Context, dependency: &Dependency, group_variant: &VersionGroupVariant) {
-  match &dependency.get_state() {
+  match &dependency.get_state(&ctx.instances) {
     InstanceState::Valid(ValidInstance::IsIgnored) => print_ignored(ctx, dependency, group_variant),
     InstanceState::Valid(_) => print_valid(ctx, dependency, group_variant),
     InstanceState::Invalid(_) => print_invalid(ctx, dependency, group_variant),
@@ -115,7 +115,7 @@ fn get_invalid_status_codes_in_brackets(ctx: &Context, dependency: &Dependency) 
     return "".to_string();
   }
   let links = dependency
-    .get_states()
+    .get_states(&ctx.instances)
     .iter()
     .filter(|state| matches!(state, InstanceState::Invalid(_) | InstanceState::Suspect(_)))
     .map(|state| state.get_name())

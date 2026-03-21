@@ -17,7 +17,7 @@ use {
     dependency::{Dependency, UpdateUrl},
     dependency_type::DependencyType,
     group_selector::GroupSelector,
-    instance::Instance,
+    instance::{Instance, InstanceIdx},
     package_json::PackageJson,
     packages::Packages,
     specifier::Specifier,
@@ -113,7 +113,7 @@ impl VersionGroup {
     }
   }
 
-  pub fn add_instance(&mut self, instance: Rc<Instance>) {
+  pub fn add_instance(&mut self, idx: InstanceIdx, instance: &Instance) {
     let dependency = self
       .dependencies
       .entry(instance.descriptor.internal_name.clone())
@@ -133,7 +133,7 @@ impl VersionGroup {
       self.matches_cli_filter = true;
       dependency.matches_cli_filter = true;
     }
-    dependency.add_instance(Rc::clone(&instance));
+    dependency.add_instance(idx, instance);
   }
 
   /// Create a single version group from a config item from the rcfile.
@@ -277,9 +277,9 @@ impl VersionGroup {
   /// Get the registry urls for every dependency that we're able to update.
   /// Examples of dependencies we can't update are those inside banned or
   /// ignored version groups, or ones that are pinned to a specific version.
-  pub fn get_update_urls(&self) -> Option<Vec<UpdateUrl>> {
+  pub fn get_update_urls(&self, arena: &[Instance]) -> Option<Vec<UpdateUrl>> {
     match self.variant {
-      VersionGroupVariant::HighestSemver => Some(self.dependencies.values().filter_map(|dep| dep.get_update_url()).collect()),
+      VersionGroupVariant::HighestSemver => Some(self.dependencies.values().filter_map(|dep| dep.get_update_url(arena)).collect()),
       _ => None,
     }
   }

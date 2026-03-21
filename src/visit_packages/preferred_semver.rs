@@ -16,11 +16,13 @@ use {
 mod preferred_semver_test;
 
 pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&RegistryUpdates>) {
+  let arena = &ctx.instances;
   debug!("visit standard version group");
   debug!("{L1}visit dependency '{}'", dependency.internal_name);
-  if dependency.has_local_instance_with_invalid_specifier() {
+  if dependency.has_local_instance_with_invalid_specifier(arena) {
     debug!("{L2}it has an invalid local instance");
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
       if instance.is_local {
@@ -32,33 +34,35 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
         debug!("{L5}mark as error");
         instance.mark_unfixable(UnfixableInstance::DependsOnInvalidLocalPackage);
       }
-    });
+    }
   } else if dependency.has_local_instance() {
     debug!("{L2}it is a package developed locally in this monorepo");
-    let local_specifier = dependency.get_local_specifier().unwrap();
+    let local_specifier = dependency.get_local_specifier(arena).unwrap();
     dependency.set_expected_specifier(&local_specifier);
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
       if instance.is_local {
         debug!("{L4}it is the valid local instance");
         instance.mark_valid(ValidInstance::IsLocalAndValid, &local_specifier);
-        return;
+        continue;
       }
       debug!("{L4}it depends on the local instance");
       if instance.descriptor.specifier.is_link() {
         debug!("{L5}it is using the link specifier");
-        if let Some(local_instance) = dependency.local_instance.borrow().as_ref() {
+        if let Some(local_idx) = dependency.local_instance.borrow().as_ref() {
+          let local_instance = &arena[local_idx.0];
           if instance.link_resolves_to_local_package(local_instance) {
             debug!("{L6}link resolves to local package directory");
             debug!("{L7}mark as satisfying local");
             instance.mark_valid(ValidInstance::SatisfiesLocal, &instance.descriptor.specifier);
-            return;
+            continue;
           } else {
             debug!("{L6}link resolves to a different directory");
             debug!("{L7}mark as differs to local");
             instance.mark_fixable(FixableInstance::DiffersToLocal, &local_specifier);
-            return;
+            continue;
           }
         }
       }
@@ -68,7 +72,7 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
           debug!("{L6}strict mode is off");
           debug!("{L7}mark as satisfying local");
           instance.mark_valid(ValidInstance::SatisfiesLocal, &instance.descriptor.specifier);
-          return;
+          continue;
         }
         debug!("{L6}strict mode is on");
       } else {
@@ -79,7 +83,7 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
         debug!("{L6}differs to the local instance");
         debug!("{L7}mark as error");
         instance.mark_fixable(FixableInstance::DiffersToLocal, &local_specifier);
-        return;
+        continue;
       }
       debug!("{L6}is the same as the local instance");
       if instance.must_match_preferred_semver_range_which_is_not(&SemverRange::Exact) {
@@ -114,7 +118,7 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
             instance.mark_conflict(SemverGroupAndVersionConflict::MismatchConflictsWithLocal);
           }
         }
-        return;
+        continue;
       }
       debug!("{L7}it is not in a semver group which prefers a different semver range to the local instance");
       if instance.already_equals(&local_specifier) {
@@ -126,16 +130,17 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
         debug!("{L9}mark as error");
         instance.mark_fixable(FixableInstance::DiffersToLocal, &local_specifier);
       }
-    });
+    }
   } else if let Some(catalog_specifier) = dependency
     .instances
     .iter()
-    .find(|i| i.descriptor.specifier.is_catalog())
-    .map(|i| &i.descriptor.specifier)
+    .find(|idx| arena[idx.0].descriptor.specifier.is_catalog())
+    .map(|idx| &arena[idx.0].descriptor.specifier)
   {
     debug!("{L2}one or more instances use the catalog: protocol which wins over semver");
     dependency.set_expected_specifier(catalog_specifier);
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
       if instance.descriptor.specifier.is_catalog() {
@@ -147,12 +152,13 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
         debug!("{L5}mark as error");
         instance.mark_fixable(FixableInstance::DiffersToCatalog, catalog_specifier);
       }
-    });
+    }
   } else if let Some(specifiers_by_eligible_update) =
-    registry_updates.and_then(|updates| dependency.get_eligible_registry_updates(updates, &ctx.config.cli.target))
+    registry_updates.and_then(|updates| dependency.get_eligible_registry_updates(arena, updates, &ctx.config.cli.target))
   {
     debug!("{L2}eligible updates were found on the npm registry ({specifiers_by_eligible_update:?})");
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
       specifiers_by_eligible_update.iter().for_each(|(update, affected_specifiers)| {
@@ -175,11 +181,12 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
           }
         }
       });
-    });
-  } else if let Some(highest_specifier) = dependency.get_highest_or_lowest_specifier() {
+    }
+  } else if let Some(highest_specifier) = dependency.get_highest_or_lowest_specifier(arena) {
     debug!("{L2}a highest semver version was found ({highest_specifier:?})");
     dependency.set_expected_specifier(&highest_specifier);
-    dependency.instances.iter().for_each(|instance| {
+    for &idx in &dependency.instances {
+      let instance = &arena[idx.0];
       let actual_specifier = &instance.descriptor.specifier;
       debug!("{L3}visit instance '{}' ({actual_specifier:?})", instance.id);
       debug!("{L4}its version number (without a range):");
@@ -192,7 +199,7 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
           .and_then(|range| highest_specifier.with_range(range))
           .unwrap_or_else(|| Rc::clone(&highest_specifier));
         instance.mark_fixable(FixableInstance::DiffersToHighestOrLowestSemver, &fix_target);
-        return;
+        continue;
       }
       debug!("{L5}is the same as the highest semver version");
       let range_of_highest_specifier = highest_specifier.get_semver_range().unwrap();
@@ -254,27 +261,29 @@ pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&R
           instance.mark_fixable(FixableInstance::DiffersToHighestOrLowestSemver, &highest_specifier);
         }
       }
-    });
+    }
   } else {
     debug!("{L2}no instances have a semver version");
-    if dependency.every_specifier_is_already_identical() {
+    if dependency.every_specifier_is_already_identical(arena) {
       debug!("{L3}but all are identical");
-      dependency.instances.iter().for_each(|instance| {
+      for &idx in &dependency.instances {
+        let instance = &arena[idx.0];
         let actual_specifier = &instance.descriptor.specifier;
         debug!("{L4}visit instance '{}' ({actual_specifier:?})", instance.id);
         debug!("{L5}it is identical to every other instance");
         debug!("{L6}mark as valid");
         instance.mark_valid(ValidInstance::IsNonSemverButIdentical, &instance.descriptor.specifier);
-      });
+      }
     } else {
       debug!("{L3}and they differ");
-      dependency.instances.iter().for_each(|instance| {
+      for &idx in &dependency.instances {
+        let instance = &arena[idx.0];
         let actual_specifier = &instance.descriptor.specifier;
         debug!("{L4}visit instance '{}' ({actual_specifier:?})", instance.id);
         debug!("{L5}it depends on a currently unknowable correct version from a set of unsupported version specifiers");
         debug!("{L6}mark as error");
         instance.mark_unfixable(UnfixableInstance::NonSemverMismatch);
-      });
+      }
     }
   }
 }

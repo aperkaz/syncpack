@@ -1,6 +1,9 @@
 use {
   super::indent::{L1, L2, L3, L4, L5},
-  crate::instance_state::{FixableInstance, UnfixableInstance, ValidInstance},
+  crate::{
+    context::Context,
+    instance_state::{FixableInstance, UnfixableInstance, ValidInstance},
+  },
   log::debug,
 };
 
@@ -8,13 +11,14 @@ use {
 #[path = "same_range_test.rs"]
 mod same_range_test;
 
-pub fn visit(dependency: &crate::dependency::Dependency) {
+pub fn visit(dependency: &crate::dependency::Dependency, ctx: &Context) {
   debug!("visit same range version group");
   debug!("{L1}visit dependency '{}'", dependency.internal_name);
-  dependency.instances.iter().for_each(|instance| {
+  for &idx in &dependency.instances {
+    let instance = &ctx.instances[idx.0];
     let actual_specifier = &instance.descriptor.specifier;
     debug!("{L2}visit instance '{}' ({actual_specifier:?})", instance.id);
-    if instance.already_satisfies_all(&dependency.instances) {
+    if instance.already_satisfies_all(&dependency.instances, &ctx.instances) {
       debug!("{L3}its specifier satisfies all other instances in the group");
       if instance.must_match_preferred_semver_range() {
         debug!("{L4}it belongs to a semver group");
@@ -36,5 +40,5 @@ pub fn visit(dependency: &crate::dependency::Dependency) {
       debug!("{L3}its specifier does not satisfy all other instances in the group");
       instance.mark_unfixable(UnfixableInstance::SameRangeMismatch);
     }
-  });
+  }
 }

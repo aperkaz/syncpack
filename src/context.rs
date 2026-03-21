@@ -1,7 +1,13 @@
 use {
-  crate::{catalogs::CatalogsByName, cli::Cli, config::Config, instance::Instance, packages::Packages, version_group::VersionGroup},
+  crate::{
+    catalogs::CatalogsByName,
+    cli::Cli,
+    config::Config,
+    instance::{Instance, InstanceIdx},
+    packages::Packages,
+    version_group::VersionGroup,
+  },
   log::debug,
-  std::rc::Rc,
 };
 
 /// The central data structure that owns all project data.
@@ -16,11 +22,8 @@ pub struct Context {
   pub catalogs: Option<CatalogsByName>,
   /// All default configuration with user config applied
   pub config: Config,
-  /// Every instance in the project.
-  /// Rc<Instance> is used for single-threaded reference counting - instances
-  /// are shared across version groups without expensive cloning.
-  /// See .cursorrules for when to use Rc vs Arc.
-  pub instances: Vec<Rc<Instance>>,
+  /// Every instance in the project (arena — owns all instances).
+  pub instances: Vec<Instance>,
   /// Every package.json in the project
   pub packages: Packages,
   /// All version groups, their dependencies, and their instances
@@ -61,12 +64,12 @@ impl Context {
 
       let version_group = version_groups.iter_mut().find(|group| group.selector.can_add(&descriptor));
 
-      let instance = Rc::new(Instance::new(descriptor, preferred_semver_range));
-
-      instances.push(Rc::clone(&instance));
+      let instance = Instance::new(descriptor, preferred_semver_range);
+      let idx = InstanceIdx(instances.len());
+      instances.push(instance);
 
       if let Some(group) = version_group {
-        group.add_instance(instance);
+        group.add_instance(idx, &instances[idx.0]);
       }
     });
 

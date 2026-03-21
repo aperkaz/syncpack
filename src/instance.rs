@@ -5,12 +5,10 @@
 //! that's a different Instance.
 //!
 //! Key points:
-//! - Instances are wrapped in Rc<Instance> for cheap sharing across version groups
+//! - All instances are owned by Context.instances (arena pattern)
+//! - Other structures reference instances via InstanceIdx
 //! - state field uses RefCell for interior mutability during inspection phase
 //! - States start as Unknown and are assigned in visit_packages()
-//!
-//! See .cursorrules for when to use Rc vs Arc.
-//! See PATTERNS.md "State Machine Pattern" for how states work.
 
 #[cfg(test)]
 #[path = "instance_test.rs"]
@@ -35,6 +33,10 @@ use {
     rc::Rc,
   },
 };
+
+/// Index into the Context.instances arena.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct InstanceIdx(pub usize);
 
 /// Unique identifier for an instance, format: "{dep} in {location} of
 /// {package}" Examples: "react in /dependencies of package-a"
@@ -341,23 +343,26 @@ impl Instance {
 
   /// Does this instance's specifier match the specifier of every one of the
   /// given instances?
-  pub fn already_satisfies_all(&self, instances: &[Rc<Instance>]) -> bool {
+  pub fn already_satisfies_all(&self, indices: &[InstanceIdx], arena: &[Instance]) -> bool {
     !matches!(&*self.descriptor.specifier, Specifier::None)
-      && self
-        .descriptor
-        .specifier
-        .satisfies_all(&instances.iter().map(|i| Rc::clone(&i.descriptor.specifier)).collect::<Vec<_>>())
+      && self.descriptor.specifier.satisfies_all(
+        &indices
+          .iter()
+          .map(|idx| Rc::clone(&arena[idx.0].descriptor.specifier))
+          .collect::<Vec<_>>(),
+      )
   }
 
   /// Does this instance have the same major version as all other instances?
   /// Semver ranges are not taken into account.
-  pub fn already_has_same_major_as_all(&self, instances: &[Rc<Instance>]) -> bool {
+  pub fn already_has_same_major_as_all(&self, indices: &[InstanceIdx], arena: &[Instance]) -> bool {
     if matches!(&*self.descriptor.specifier, Specifier::None) {
       return false;
     }
     match self.descriptor.specifier.get_node_version() {
       None => false,
-      Some(a) => instances.iter().all(|other_instance| {
+      Some(a) => indices.iter().all(|idx| {
+        let other_instance = &arena[idx.0];
         if matches!(&*other_instance.descriptor.specifier, Specifier::None) {
           return false;
         }
@@ -371,13 +376,14 @@ impl Instance {
 
   /// Does this instance have the same major.minor version as all other
   /// instances? Semver ranges are not taken into account.
-  pub fn already_has_same_minor_number_as_all(&self, instances: &[Rc<Instance>]) -> bool {
+  pub fn already_has_same_minor_number_as_all(&self, indices: &[InstanceIdx], arena: &[Instance]) -> bool {
     if matches!(&*self.descriptor.specifier, Specifier::None) {
       return false;
     }
     match self.descriptor.specifier.get_node_version() {
       None => false,
-      Some(a) => instances.iter().all(|other_instance| {
+      Some(a) => indices.iter().all(|idx| {
+        let other_instance = &arena[idx.0];
         if matches!(&*other_instance.descriptor.specifier, Specifier::None) {
           return false;
         }

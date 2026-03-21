@@ -38,7 +38,7 @@ pub fn run(ctx: Context) -> i32 {
     .filter(|group| !group.has_ignored_variant() || ctx.config.cli.show_ignored)
     .for_each(|group| {
       group.get_sorted_dependencies(&ctx.config.cli.sort).for_each(|dependency| {
-        dependency.get_sorted_instances().for_each(|instance| {
+        dependency.get_sorted_instances(&ctx.instances).for_each(|instance| {
           let instance_json = instance_to_json(&ctx, instance, &dependency.variant);
           println!("{}", serde_json::to_string(&instance_json).unwrap());
           if instance.is_invalid() || (instance.is_suspect() && ctx.config.rcfile.strict) {
