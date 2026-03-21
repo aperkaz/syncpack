@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "rcfile_test.rs"]
+mod rcfile_test;
+
 use {
   crate::{
     dependency_type::DependencyType,

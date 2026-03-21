@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "packages_test.rs"]
+mod packages_test;
+
 use {
   crate::{
     cli::Cli,

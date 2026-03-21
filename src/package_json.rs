@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "package_json_test.rs"]
+mod package_json_test;
+
 use {
   crate::{config::Config, dependency_type::Strategy, instance::Instance},
   detect_indent::detect_indent,

@@ -31,18 +31,10 @@ mod instance;
 mod instance_state;
 mod logger;
 mod package_json;
-#[cfg(test)]
-mod package_json_test;
 mod packages;
-#[cfg(test)]
-mod packages_test;
 mod pattern_matcher;
 mod rcfile;
-#[cfg(test)]
-mod rcfile_test;
 mod registry_client;
-#[cfg(test)]
-mod registry_client_test;
 mod registry_updates;
 mod semver_group;
 mod semver_range;
