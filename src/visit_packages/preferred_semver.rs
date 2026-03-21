@@ -4,6 +4,7 @@ use {
     context::Context,
     dependency::Dependency,
     instance_state::{FixableInstance, SemverGroupAndVersionConflict, SuspectInstance, UnfixableInstance, ValidInstance},
+    registry_updates::RegistryUpdates,
     semver_range::SemverRange,
   },
   log::debug,
@@ -14,7 +15,7 @@ use {
 #[path = "preferred_semver_test.rs"]
 mod preferred_semver_test;
 
-pub fn visit(dependency: &Dependency, ctx: &Context) {
+pub fn visit(dependency: &Dependency, ctx: &Context, registry_updates: Option<&RegistryUpdates>) {
   debug!("visit standard version group");
   debug!("{L1}visit dependency '{}'", dependency.internal_name);
   if dependency.has_local_instance_with_invalid_specifier() {
@@ -147,7 +148,9 @@ pub fn visit(dependency: &Dependency, ctx: &Context) {
         instance.mark_fixable(FixableInstance::DiffersToCatalog, catalog_specifier);
       }
     });
-  } else if let Some(specifiers_by_eligible_update) = dependency.get_eligible_registry_updates(ctx) {
+  } else if let Some(specifiers_by_eligible_update) =
+    registry_updates.and_then(|updates| dependency.get_eligible_registry_updates(updates, &ctx.config.cli.target))
+  {
     debug!("{L2}eligible updates were found on the npm registry ({specifiers_by_eligible_update:?})");
     dependency.instances.iter().for_each(|instance| {
       let actual_specifier = &instance.descriptor.specifier;

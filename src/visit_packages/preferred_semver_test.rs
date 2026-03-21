@@ -914,7 +914,7 @@ mod highest_or_lowest {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -970,7 +970,7 @@ mod highest_or_lowest {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1031,7 +1031,7 @@ mod highest_or_lowest {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1092,7 +1092,7 @@ mod highest_or_lowest {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1153,7 +1153,7 @@ mod highest_or_lowest {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1214,7 +1214,7 @@ mod highest_or_lowest {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1669,7 +1669,7 @@ mod non_semver {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1725,7 +1725,7 @@ mod non_semver {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1776,7 +1776,7 @@ mod non_semver {
     })]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::valid(IsLocalAndValid),
@@ -1809,7 +1809,7 @@ mod non_semver {
     })]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::valid(IsLocalAndValid),
@@ -1849,7 +1849,7 @@ mod non_semver {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1905,7 +1905,7 @@ mod non_semver {
     ]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -1956,7 +1956,7 @@ mod non_semver {
     })]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),
@@ -2009,7 +2009,7 @@ mod dependency_groups {
     })]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::valid(IsLocalAndValid),
@@ -2062,7 +2062,7 @@ mod dependency_groups {
     })]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::valid(IsLocalAndValid),
@@ -2766,7 +2766,7 @@ mod catalogs {
     })]);
     let catalogs = None;
     let ctx = Context::create(config, packages, catalogs);
-    let ctx = visit_packages(ctx);
+    let ctx = visit_packages(ctx, None);
     expect(&ctx).to_have_instances(vec![
       ExpectedInstance {
         state: InstanceState::suspect(InvalidLocalVersion),

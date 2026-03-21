@@ -2,12 +2,13 @@ use {
   crate::{
     commands::{ui, ui::LINE_ENDING},
     context::Context,
+    registry_updates::RegistryUpdates,
     version_group::VersionGroupVariant,
   },
   log::{error, warn},
 };
 
-pub fn run(ctx: Context) -> i32 {
+pub fn run(ctx: Context, registry_updates: &RegistryUpdates) -> i32 {
   let mut was_outdated = false;
 
   ctx
@@ -45,9 +46,9 @@ pub fn run(ctx: Context) -> i32 {
       })
     });
 
-  if !ctx.failed_updates.is_empty() {
+  if !registry_updates.failed.is_empty() {
     println!(" ");
-    ctx.failed_updates.iter().for_each(|name| {
+    registry_updates.failed.iter().for_each(|name| {
       error!("Failed to fetch {name}");
     });
     warn!(

@@ -12,10 +12,11 @@
 
 use {
   crate::{
-    context::Context,
+    cli::UpdateTarget,
     instance::Instance,
     instance_state::InstanceState,
     package_json::PackageJson,
+    registry_updates::RegistryUpdates,
     semver_range::SemverRange,
     specifier::Specifier,
     version_group::{PreferVersion, VersionGroupVariant},
@@ -267,13 +268,17 @@ impl Dependency {
   ///
   /// When only applying eg. patch updates, some specifiers will be assigned to
   /// different updates if they are not on the same minor version.
-  pub fn get_eligible_registry_updates(&self, ctx: &Context) -> Option<HashMap<String, Vec<Rc<Specifier>>>> {
-    ctx.updates_by_internal_name.get(&self.internal_name).map(|updates| {
+  pub fn get_eligible_registry_updates(
+    &self,
+    registry_updates: &RegistryUpdates,
+    target: &UpdateTarget,
+  ) -> Option<HashMap<String, Vec<Rc<Specifier>>>> {
+    registry_updates.updates_by_internal_name.get(&self.internal_name).map(|updates| {
       let mut specifiers_by_eligible_update: HashMap<String, Vec<Rc<Specifier>>> = HashMap::new();
       self.get_unique_specifiers().iter().for_each(|installed| {
         updates
           .iter()
-          .filter(|update| update.is_eligible_update_for(installed, &ctx.config.cli.target))
+          .filter(|update| update.is_eligible_update_for(installed, target))
           // @TODO: make whether to do this configurable
           .filter(|update| installed.has_same_release_channel_as(update))
           .fold(None, |preferred, specifier| match preferred {

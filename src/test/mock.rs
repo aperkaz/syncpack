@@ -9,6 +9,7 @@ use {
     packages::Packages,
     rcfile::Rcfile,
     registry_client::RegistryClient,
+    registry_updates::RegistryUpdates,
     specifier::Specifier,
   },
   log::LevelFilter,
@@ -122,15 +123,15 @@ pub fn catalogs_from_mocks(value: serde_json::Value) -> CatalogsByName {
   catalogs
 }
 
-/// Create a Context struct with mocked npm registry updates applied to it
+/// Create a Context and RegistryUpdates from mocked npm registry data
 pub async fn context_with_registry_updates(
   config: Config,
   packages: Packages,
   mock_updates: serde_json::Value,
   catalogs: Option<CatalogsByName>,
-) -> Context {
+) -> (Context, RegistryUpdates) {
   let client: Arc<dyn RegistryClient> = Arc::new(MockRegistryClient::from_json(mock_updates));
-  let mut ctx = Context::create(config, packages, catalogs);
-  ctx.fetch_all_updates(&client).await;
-  ctx
+  let ctx = Context::create(config, packages, catalogs);
+  let updates = RegistryUpdates::fetch(&client, &ctx.version_groups, ctx.config.rcfile.max_concurrent_requests).await;
+  (ctx, updates)
 }

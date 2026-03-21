@@ -8,6 +8,7 @@ use {
     },
     context::Context,
     registry_client::LiveRegistryClient,
+    registry_updates::RegistryUpdates,
     visit_formatting::visit_formatting,
     visit_packages::visit_packages,
   },
@@ -42,6 +43,7 @@ mod rcfile_test;
 mod registry_client;
 #[cfg(test)]
 mod registry_client_test;
+mod registry_updates;
 mod semver_group;
 mod semver_range;
 mod specifier;
@@ -59,7 +61,7 @@ async fn main() {
 
   let exit_code = match ctx.config.cli.subcommand {
     Subcommand::Fix => {
-      let ctx = visit_packages(ctx);
+      let ctx = visit_packages(ctx, None);
       let pretty = PrettyFixReporter;
       let json_reporter = JsonFixReporter;
       let reporter: &dyn commands::reporter::FixReporter = match ctx.config.cli.reporter {
@@ -79,22 +81,21 @@ async fn main() {
       format::run(ctx, reporter)
     }
     Subcommand::Lint => {
-      let ctx = visit_packages(ctx);
+      let ctx = visit_packages(ctx, None);
       lint::run(ctx)
     }
     Subcommand::Update => {
-      let mut ctx = ctx;
       let client: Arc<dyn registry_client::RegistryClient> = Arc::new(LiveRegistryClient::new());
-      ctx.fetch_all_updates(&client).await;
-      let ctx = visit_packages(ctx);
-      update::run(ctx)
+      let updates = RegistryUpdates::fetch(&client, &ctx.version_groups, ctx.config.rcfile.max_concurrent_requests).await;
+      let ctx = visit_packages(ctx, Some(&updates));
+      update::run(ctx, &updates)
     }
     Subcommand::List => {
-      let ctx = visit_packages(ctx);
+      let ctx = visit_packages(ctx, None);
       list::run(ctx)
     }
     Subcommand::Json => {
-      let ctx = visit_packages(ctx);
+      let ctx = visit_packages(ctx, None);
       json::run(ctx)
     }
     Subcommand::ListMismatches => list_mismatches::run(),

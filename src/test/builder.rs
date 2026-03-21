@@ -120,7 +120,7 @@ impl TestBuilder {
 
   pub fn build_and_visit_packages(self) -> Context {
     let ctx = self.build();
-    visit_packages(ctx)
+    visit_packages(ctx, None)
   }
 
   pub fn build_and_visit_formatting(self) -> Context {
@@ -141,13 +141,13 @@ impl TestBuilder {
       }
     }
 
-    let ctx = if let Some(updates) = self.registry_updates {
-      mock::context_with_registry_updates(config, packages, updates, catalogs).await
+    if let Some(mock_updates) = self.registry_updates {
+      let (ctx, updates) = mock::context_with_registry_updates(config, packages, mock_updates, catalogs).await;
+      visit_packages(ctx, Some(&updates))
     } else {
-      Context::create(config, packages, catalogs)
-    };
-
-    visit_packages(ctx)
+      let ctx = Context::create(config, packages, catalogs);
+      visit_packages(ctx, None)
+    }
   }
 
   /// Create catalogs if provided

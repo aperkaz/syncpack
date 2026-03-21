@@ -1,5 +1,5 @@
 use {
-  crate::{context::Context, version_group::VersionGroupVariant},
+  crate::{context::Context, registry_updates::RegistryUpdates, version_group::VersionGroupVariant},
   itertools::Itertools,
   std::cmp::Ordering,
 };
@@ -37,11 +37,11 @@ fn init() {
 /// Called from: src/main.rs (after Context::create)
 /// Next step: Command functions in src/commands/*.rs
 /// See also: Each visitor module (banned.rs, pinned.rs, etc.)
-pub fn visit_packages(ctx: Context) -> Context {
+pub fn visit_packages(ctx: Context, registry_updates: Option<&RegistryUpdates>) -> Context {
   ctx.version_groups.iter().sorted_by(order_snapped_to_groups_last).for_each(|group| {
     group.dependencies.values().for_each(|dependency| match dependency.variant {
       VersionGroupVariant::Banned => banned::visit(dependency),
-      VersionGroupVariant::HighestSemver | VersionGroupVariant::LowestSemver => preferred_semver::visit(dependency, &ctx),
+      VersionGroupVariant::HighestSemver | VersionGroupVariant::LowestSemver => preferred_semver::visit(dependency, &ctx, registry_updates),
       VersionGroupVariant::Ignored => ignored::visit(dependency),
       VersionGroupVariant::Pinned => pinned::visit(dependency),
       VersionGroupVariant::SameRange => same_range::visit(dependency),
