@@ -1523,10 +1523,8 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "ctor",
- "lazy_static",
  "log",
  "node-semver",
- "regex",
 ]
 
 [[package]]

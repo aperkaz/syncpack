@@ -38,7 +38,6 @@ pub mod parser;
 pub mod range;
 pub mod range_major;
 pub mod range_minor;
-pub mod regexes;
 
 #[cfg(test)]
 mod satisfies_all_test;
@@ -172,59 +171,146 @@ impl Specifier {
 
   /// Create a new Specifier for the given version string
   pub fn create(value: &str) -> Self {
-    if value.is_empty() {
-      return Self::None;
+    let bytes = value.as_bytes();
+    match bytes.first() {
+      None => Self::None,
+      // Digit: exact (1.2.3), major (1), minor (1.2), or complex range (1.0.0 || 2.0.0)
+      Some(b'0'..=b'9') => {
+        if parser::is_exact(value) {
+          Exact::create(value)
+        } else if parser::is_minor(value) {
+          Minor::create(value)
+        } else if parser::is_major(value) {
+          Major::create(value)
+        } else if parser::is_complex_range(value) {
+          ComplexSemver::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // Range prefix: range (^1.2.3), range_major (^1), range_minor (^1.2), or complex
+      Some(b'^' | b'~') => {
+        if parser::is_range(value) {
+          Range::create(value)
+        } else if parser::is_range_minor(value) {
+          RangeMinor::create(value)
+        } else if parser::is_range_major(value) {
+          RangeMajor::create(value)
+        } else if parser::is_complex_range(value) {
+          ComplexSemver::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // Comparison operators: range, range_major, range_minor, or complex
+      Some(b'>' | b'<') => {
+        if parser::is_range(value) {
+          Range::create(value)
+        } else if parser::is_range_minor(value) {
+          RangeMinor::create(value)
+        } else if parser::is_range_major(value) {
+          RangeMajor::create(value)
+        } else if parser::is_complex_range(value) {
+          ComplexSemver::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // Equals prefix: exact (=1.2.3)
+      Some(b'=') => {
+        if parser::is_exact(value) {
+          Exact::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // Star/latest
+      Some(b'*') => Latest::create(value),
+      // Workspace protocol
+      Some(b'w') => {
+        if value.starts_with("workspace:") {
+          WorkspaceProtocol::create(value)
+        } else if parser::is_tag(value) {
+          Tag::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // Catalog
+      Some(b'c') => {
+        if value.starts_with("catalog:") {
+          Catalog::create(value)
+        } else if parser::is_tag(value) {
+          Tag::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // npm alias
+      Some(b'n') => {
+        if value.starts_with("npm:") {
+          Alias::create(value)
+        } else if parser::is_tag(value) {
+          Tag::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // Git
+      Some(b'g') => {
+        if parser::is_git(value) {
+          Git::create(value)
+        } else if parser::is_tag(value) {
+          Tag::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // File
+      Some(b'f') => {
+        if value.starts_with("file:") {
+          file::File::create(value)
+        } else if parser::is_tag(value) {
+          Tag::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // Link
+      Some(b'l') => {
+        if value.starts_with("link:") {
+          Link::create(value)
+        } else if value == "latest" {
+          Latest::create(value)
+        } else if parser::is_tag(value) {
+          Tag::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // HTTP/HTTPS URL
+      Some(b'h') => {
+        if value.starts_with("http://") || value.starts_with("https://") {
+          url::Url::create(value)
+        } else if parser::is_tag(value) {
+          Tag::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // "x" is latest
+      Some(b'x') => Latest::create(value),
+      // Any other alphabetic char → tag
+      Some(b) if b.is_ascii_alphabetic() => {
+        if parser::is_tag(value) {
+          Tag::create(value)
+        } else {
+          Self::Unsupported(value.to_string())
+        }
+      }
+      // Everything else
+      _ => Self::Unsupported(value.to_string()),
     }
-    if parser::is_exact(value) {
-      return Exact::create(value);
-    }
-    if parser::is_range(value) {
-      return Range::create(value);
-    }
-    if parser::is_latest(value) {
-      return Latest::create(value);
-    }
-    if parser::is_major(value) {
-      return Major::create(value);
-    }
-    if parser::is_minor(value) {
-      return Minor::create(value);
-    }
-    if parser::is_range_major(value) {
-      return RangeMajor::create(value);
-    }
-    if parser::is_range_minor(value) {
-      return RangeMinor::create(value);
-    }
-    if parser::is_complex_range(value) {
-      return ComplexSemver::create(value);
-    }
-    let first_char = value.chars().next().unwrap_or('\0');
-    if first_char == 'c' && value.starts_with("catalog:") {
-      return Catalog::create(value);
-    }
-    if first_char == 'w' && value.starts_with("workspace:") {
-      return WorkspaceProtocol::create(value);
-    }
-    if parser::is_tag(value) {
-      return Tag::create(value);
-    }
-    if first_char == 'n' && value.starts_with("npm:") {
-      return Alias::create(value);
-    }
-    if parser::is_git(value) {
-      return Git::create(value);
-    }
-    if first_char == 'f' && value.starts_with("file:") {
-      return file::File::create(value);
-    }
-    if parser::is_link(value) {
-      return Link::create(value);
-    }
-    if first_char == 'h' && (value.starts_with("http://") || value.starts_with("https://")) {
-      return url::Url::create(value);
-    }
-    Self::Unsupported(value.to_string())
   }
 }
 
