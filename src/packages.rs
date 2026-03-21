@@ -140,7 +140,7 @@ impl Packages {
             }
           }
           Strategy::InvalidConfig => {
-            panic!("unrecognised strategy");
+            unreachable!("unrecognised strategy");
           }
         };
       }

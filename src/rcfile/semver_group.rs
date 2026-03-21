@@ -43,7 +43,7 @@ impl SemverGroup {
   }
 
   /// Create a single version group from a config item from the rcfile.
-  pub fn from_config(group: AnySemverGroup) -> SemverGroup {
+  pub fn from_config(group: AnySemverGroup) -> Result<SemverGroup, String> {
     let selector = GroupSelector::new(
       /* include_dependencies: */ group.dependencies,
       /* include_dependency_types: */ group.dependency_types,
@@ -53,16 +53,16 @@ impl SemverGroup {
     );
 
     if let Some(true) = group.is_disabled {
-      SemverGroup { selector, range: None }
+      Ok(SemverGroup { selector, range: None })
     } else if let Some(true) = group.is_ignored {
-      SemverGroup { selector, range: None }
+      Ok(SemverGroup { selector, range: None })
     } else if let Some(range) = &group.range {
-      SemverGroup {
+      Ok(SemverGroup {
         selector,
         range: SemverRange::new(range),
-      }
+      })
     } else {
-      panic!("Invalid semver group");
+      Err("Invalid semver group: must have isDisabled, isIgnored, or range".to_string())
     }
   }
 }

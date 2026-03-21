@@ -11,11 +11,10 @@ use {
     packages::Packages,
     version_group::{AnyVersionGroup, VersionGroup},
   },
-  log::error,
   semver_group::{AnySemverGroup, SemverGroup},
   serde::Deserialize,
   serde_json::Value,
-  std::{collections::HashMap, mem, process::exit},
+  std::{collections::HashMap, mem},
 };
 
 pub fn compute_all_dependency_types(custom_types: &HashMap<String, CustomType>) -> Vec<DependencyType> {
@@ -92,7 +91,7 @@ pub fn compute_all_dependency_types(custom_types: &HashMap<String, CustomType>) 
 }
 
 mod discovery;
-mod error;
+pub mod error;
 mod javascript;
 mod json;
 mod package_json;
@@ -227,75 +226,57 @@ pub(crate) struct RawRcfile {
 
 impl RawRcfile {
   /// Handle config that is no longer supported or was hallucinated by an LLM
-  pub fn visit_unknown_rcfile_fields(&self) {
-    let mut is_valid = true;
+  pub fn validate_unknown_fields(&self) -> Result<(), String> {
+    let mut errors: Vec<String> = vec![];
     self.unknown_fields.iter().for_each(|(key, _)| match key.as_str() {
       "dependencyTypes" => {
-        error!("Config property 'dependencyTypes' is deprecated");
-        error!("Use CLI flag instead: --dependency-types prod,dev,peer");
-        is_valid = false;
+        errors.push("Config property 'dependencyTypes' is deprecated\nUse CLI flag instead: --dependency-types prod,dev,peer".to_string());
       }
       "specifierTypes" => {
-        error!("Config property 'specifierTypes' is deprecated");
-        error!("Use CLI flag instead: --specifier-types exact,range");
-        is_valid = false;
+        errors.push("Config property 'specifierTypes' is deprecated\nUse CLI flag instead: --specifier-types exact,range".to_string());
       }
       "lintFormatting" => {
-        error!("Config property 'lintFormatting' is deprecated");
-        error!("Use 'syncpack format --check' to validate formatting");
-        is_valid = false;
+        errors.push("Config property 'lintFormatting' is deprecated\nUse 'syncpack format --check' to validate formatting".to_string());
       }
       "lintSemverRanges" => {
-        error!("Config property 'lintSemverRanges' is deprecated");
-        error!("Semver range checking is always enabled in 'syncpack lint'");
-        is_valid = false;
+        errors
+          .push("Config property 'lintSemverRanges' is deprecated\nSemver range checking is always enabled in 'syncpack lint'".to_string());
       }
       "lintVersions" => {
-        error!("Config property 'lintVersions' is deprecated");
-        error!("Version checking is always enabled in 'syncpack lint'");
-        is_valid = false;
+        errors.push("Config property 'lintVersions' is deprecated\nVersion checking is always enabled in 'syncpack lint'".to_string());
       }
       _ => {
-        error!("Config property '{key}' is not recognised");
-        is_valid = false;
+        errors.push(format!("Config property '{key}' is not recognised"));
       }
     });
     self.custom_types.iter().for_each(|(custom_type_name, value)| {
       value.unknown_fields.iter().for_each(|(field_name, _)| {
-        error!("Config property 'customTypes.{custom_type_name}.{field_name}' is not recognised");
-        is_valid = false;
+        errors.push(format!(
+          "Config property 'customTypes.{custom_type_name}.{field_name}' is not recognised"
+        ));
       });
     });
     self.dependency_groups.iter().enumerate().for_each(|(index, value)| {
       value.unknown_fields.iter().for_each(|(key, _)| {
-        error!("Config property 'dependencyGroups[{index}].{key}' is not recognised");
-        is_valid = false;
+        errors.push(format!("Config property 'dependencyGroups[{index}].{key}' is not recognised"));
       });
     });
     self.semver_groups.iter().enumerate().for_each(|(index, value)| {
       value.unknown_fields.iter().for_each(|(key, _)| {
-        error!("Config property 'semverGroups[{index}].{key}' is not recognised");
-        is_valid = false;
+        errors.push(format!("Config property 'semverGroups[{index}].{key}' is not recognised"));
       });
     });
     self.version_groups.iter().enumerate().for_each(|(index, value)| {
       value.unknown_fields.iter().for_each(|(key, _)| {
-        error!("Config property 'versionGroups[{index}].{key}' is not recognised");
-        is_valid = false;
+        errors.push(format!("Config property 'versionGroups[{index}].{key}' is not recognised"));
       });
     });
-    if !is_valid {
-      error!("syncpack will exit due to an invalid config file, see https://syncpack.dev for documentation");
-      exit(1);
+    if errors.is_empty() {
+      Ok(())
+    } else {
+      errors.push("syncpack will exit due to an invalid config file, see https://syncpack.dev for documentation".to_string());
+      Err(errors.join("\n"))
     }
-  }
-}
-
-fn validate_or_exit(result: Result<(), String>) {
-  if let Err(msg) = result {
-    error!("{msg}");
-    error!("check your syncpack config file");
-    exit(1);
   }
 }
 
@@ -311,30 +292,29 @@ fn validate_raw_dep_types(raw: &[String], all: &[DependencyType]) -> Result<(), 
   Ok(())
 }
 
-impl From<RawRcfile> for Rcfile {
-  fn from(raw: RawRcfile) -> Self {
+impl TryFrom<RawRcfile> for Rcfile {
+  type Error = String;
+
+  fn try_from(raw: RawRcfile) -> Result<Self, String> {
     let all_dependency_types = compute_all_dependency_types(&raw.custom_types);
-    let dependency_groups = raw
-      .dependency_groups
-      .into_iter()
-      .map(|dg| {
-        let selector = GroupSelector::new(dg.dependencies, dg.dependency_types, dg.alias_name, dg.packages, dg.specifier_types);
-        validate_or_exit(selector.validate_dependency_types(&all_dependency_types));
-        selector
-      })
-      .collect();
+    let mut dependency_groups = vec![];
+    for dg in raw.dependency_groups {
+      let selector = GroupSelector::new(dg.dependencies, dg.dependency_types, dg.alias_name, dg.packages, dg.specifier_types);
+      selector.validate_dependency_types(&all_dependency_types)?;
+      dependency_groups.push(selector);
+    }
     let mut semver_groups = vec![SemverGroup::get_exact_local_specifiers()];
     for group_config in raw.semver_groups {
-      let semver_group = SemverGroup::from_config(group_config);
-      validate_or_exit(semver_group.selector.validate_dependency_types(&all_dependency_types));
+      let semver_group = SemverGroup::from_config(group_config)?;
+      semver_group.selector.validate_dependency_types(&all_dependency_types)?;
       semver_groups.push(semver_group);
     }
     semver_groups.push(SemverGroup::get_catch_all());
-    raw.version_groups.iter().for_each(|group| {
-      validate_or_exit(validate_raw_dep_types(&group.dependency_types, &all_dependency_types));
-    });
+    for group in &raw.version_groups {
+      validate_raw_dep_types(&group.dependency_types, &all_dependency_types)?;
+    }
 
-    Rcfile {
+    Ok(Rcfile {
       dependency_groups,
       format_bugs: raw.format_bugs,
       format_repository: raw.format_repository,
@@ -349,7 +329,7 @@ impl From<RawRcfile> for Rcfile {
       strict: raw.strict,
       version_groups: raw.version_groups,
       all_dependency_types,
-    }
+    })
   }
 }
 
@@ -376,18 +356,19 @@ impl Default for Rcfile {
   fn default() -> Self {
     serde_json::from_str::<RawRcfile>("{}")
       .expect("An empty object should produce a default Rcfile")
-      .into()
+      .try_into()
+      .expect("Default Rcfile should always be valid")
   }
 }
 
 impl Rcfile {
   /// Create every version group defined in the rcfile.
-  pub fn get_version_groups(&mut self, packages: &Packages) -> Vec<VersionGroup> {
+  pub fn get_version_groups(&mut self, packages: &Packages) -> Result<Vec<VersionGroup>, String> {
     let mut all_groups: Vec<VersionGroup> = mem::take(&mut self.version_groups)
       .into_iter()
       .map(|group_config| VersionGroup::from_config(group_config, packages))
-      .collect();
+      .collect::<Result<Vec<_>, _>>()?;
     all_groups.push(VersionGroup::get_catch_all());
-    all_groups
+    Ok(all_groups)
   }
 }

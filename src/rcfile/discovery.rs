@@ -1,6 +1,7 @@
 use {
   crate::{
     cli::Cli,
+    context::SyncpackError,
     rcfile::{
       error::RcfileError,
       javascript::{from_javascript_path, try_from_js_candidates},
@@ -10,34 +11,31 @@ use {
       RawRcfile, Rcfile,
     },
   },
-  log::{debug, error},
-  std::{path::PathBuf, process::exit, time::Instant},
+  log::debug,
+  std::{path::PathBuf, time::Instant},
 };
 
 impl Rcfile {
-  pub fn from_disk(cli: &Cli) -> Rcfile {
+  pub fn from_disk(cli: &Cli) -> Result<Rcfile, SyncpackError> {
     let start = Instant::now();
-    let rcfile = Self::try_from_cli_option(cli)
+    let rcfile = match Self::try_from_cli_option(cli)
       .or_else(|| try_from_json_candidates(cli))
       .or_else(|| try_from_yaml_candidates(cli))
       .or_else(|| try_from_package_json_config_property(cli))
       .or_else(|| try_from_js_candidates(cli))
-      .map(|result| match result {
-        Ok(raw) => {
-          raw.visit_unknown_rcfile_fields();
-          Rcfile::from(raw)
-        }
-        Err(err) => {
-          error!("{err}");
-          exit(1);
-        }
-      })
-      .unwrap_or_else(|| {
+    {
+      Some(result) => {
+        let raw = result?;
+        raw.validate_unknown_fields().map_err(SyncpackError::InvalidConfig)?;
+        Rcfile::try_from(raw).map_err(SyncpackError::InvalidConfig)?
+      }
+      None => {
         debug!("No config file found, using defaults");
         Rcfile::default()
-      });
+      }
+    };
     debug!("Config discovery completed in {:?}", start.elapsed());
-    rcfile
+    Ok(rcfile)
   }
 
   fn try_from_cli_option(cli: &Cli) -> Option<Result<RawRcfile, RcfileError>> {

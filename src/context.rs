@@ -4,12 +4,21 @@ use {
     cli::Cli,
     instance::{Instance, InstanceIdx},
     packages::Packages,
-    rcfile::Rcfile,
+    rcfile::{error::RcfileError, Rcfile},
     version_group::VersionGroup,
   },
-  log::{debug, error},
-  std::{mem, process::exit},
+  log::debug,
+  std::mem,
+  thiserror::Error,
 };
+
+#[derive(Debug, Error)]
+pub enum SyncpackError {
+  #[error("{0}")]
+  InvalidConfig(String),
+  #[error("{0}")]
+  RcfileError(#[from] RcfileError),
+}
 
 #[derive(Debug)]
 pub struct Config {
@@ -19,11 +28,11 @@ pub struct Config {
 
 impl Config {
   /// Read the rcfile from stdin and fall back to defaults if none was sent
-  pub fn from_cli(cli: Cli) -> Config {
-    Config {
-      rcfile: Rcfile::from_disk(&cli),
+  pub fn from_cli(cli: Cli) -> Result<Config, SyncpackError> {
+    Ok(Config {
+      rcfile: Rcfile::from_disk(&cli)?,
       cli,
-    }
+    })
   }
 }
 
@@ -50,17 +59,15 @@ pub struct Context {
 impl Context {
   /// Read all configuration and package.json files, collect all dependency
   /// instances, and assign them to version groups.
-  pub fn create(mut config: Config, packages: Packages, catalogs: Option<CatalogsByName>) -> Self {
+  pub fn create(mut config: Config, packages: Packages, catalogs: Option<CatalogsByName>) -> Result<Self, SyncpackError> {
     let mut instances = vec![];
     let dependency_groups = mem::take(&mut config.rcfile.dependency_groups);
     let semver_groups = mem::take(&mut config.rcfile.semver_groups);
-    let mut version_groups = config.rcfile.get_version_groups(&packages);
+    let mut version_groups = config.rcfile.get_version_groups(&packages).map_err(SyncpackError::InvalidConfig)?;
     let all_dependency_types = &config.rcfile.all_dependency_types;
     if let Some(ref filters) = config.cli.filters {
       if let Err(msg) = filters.validate_dependency_types(all_dependency_types) {
-        error!("{msg}");
-        error!("check your syncpack config file");
-        exit(1);
+        return Err(SyncpackError::InvalidConfig(format!("{msg}\ncheck your syncpack config file")));
       }
     }
 
@@ -93,17 +100,17 @@ impl Context {
       }
     });
 
-    Self {
+    Ok(Self {
       catalogs,
       config,
       instances,
       packages,
       version_groups,
-    }
+    })
   }
 
-  pub fn from_cli(cli: Cli) -> Self {
-    let config = Config::from_cli(cli);
+  pub fn from_cli(cli: Cli) -> Result<Self, SyncpackError> {
+    let config = Config::from_cli(cli)?;
 
     debug!("Command: {:?}", config.cli.subcommand);
     debug!("{:#?}", config.cli);

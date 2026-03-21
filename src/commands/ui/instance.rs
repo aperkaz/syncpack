@@ -19,7 +19,7 @@ pub fn print(ctx: &Context, instance: &Instance) {
     InstanceState::Unknown => {
       let location = get_location(ctx, instance);
       error!("Instance '{location}' has an unknown state, this is a bug in syncpack");
-      panic!("Unknown Instance State");
+      unreachable!("Unknown Instance State");
     }
   }
 }

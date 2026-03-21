@@ -20,7 +20,7 @@ pub fn print(ctx: &Context, dependency: &Dependency, group_variant: &VersionGrou
     InstanceState::Unknown => {
       let name = &dependency.internal_name;
       error!("Dependency '{name}' has an unknown state, this is a bug in syncpack");
-      panic!("Unknown Dependency State");
+      unreachable!("Unknown Dependency State");
     }
   }
 }

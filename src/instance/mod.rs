@@ -465,7 +465,7 @@ impl Instance {
         }
       }
       Strategy::InvalidConfig => {
-        panic!("unrecognised strategy");
+        unreachable!("unrecognised strategy");
       }
     };
   }

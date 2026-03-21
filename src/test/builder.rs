@@ -115,7 +115,7 @@ impl TestBuilder {
         UpdateTarget::Patch => config.cli.target = UpdateTarget::Patch,
       }
     }
-    Context::create(config, packages, catalogs)
+    Context::create(config, packages, catalogs).unwrap()
   }
 
   pub fn build_and_visit_packages(self) -> Context {
@@ -145,7 +145,7 @@ impl TestBuilder {
       let (ctx, updates) = mock::context_with_registry_updates(config, packages, mock_updates, catalogs).await;
       visit_packages(ctx, Some(&updates))
     } else {
-      let ctx = Context::create(config, packages, catalogs);
+      let ctx = Context::create(config, packages, catalogs).unwrap();
       visit_packages(ctx, None)
     }
   }

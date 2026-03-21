@@ -35,7 +35,7 @@ fn instance_identical_to_snapped_to_and_has_no_semver_group() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -97,7 +97,7 @@ fn instance_has_different_version_to_snapped_to_and_has_no_semver_group() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -159,7 +159,7 @@ fn instance_has_same_version_number_as_snapped_to_but_a_different_range_and_has_
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -225,7 +225,7 @@ fn instance_has_same_version_number_as_snapped_to_but_matches_a_different_but_co
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -291,7 +291,7 @@ fn instance_has_same_version_number_as_snapped_to_but_mismatches_a_different_but
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -357,7 +357,7 @@ fn instance_has_same_version_number_as_snapped_to_but_matches_a_different_but_in
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -423,7 +423,7 @@ fn instance_has_same_version_number_as_snapped_to_but_mismatches_a_different_but
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -484,7 +484,7 @@ fn instance_cannot_find_a_snapped_to_version() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -537,7 +537,7 @@ fn instance_is_in_a_snapped_to_group_and_is_itself_a_snapped_to_target() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -596,7 +596,7 @@ fn refuses_to_snap_local_version_to_another_target() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -650,7 +650,7 @@ fn workspace_star_identical_to_snapped_to_target() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -712,7 +712,7 @@ fn workspace_star_differs_from_workspace_with_embedded_version() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -774,7 +774,7 @@ fn workspace_caret_identical_to_snapped_to_target() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -836,7 +836,7 @@ fn workspace_tilde_identical_to_snapped_to_target() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {
@@ -905,7 +905,7 @@ fn differs_to_snap_target_should_apply_semver_group_range() {
     }),
   ]);
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let ctx = visit_packages(ctx, None);
   expect(&ctx).to_have_instances(vec![
     ExpectedInstance {

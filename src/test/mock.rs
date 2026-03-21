@@ -59,7 +59,10 @@ pub fn rcfile() -> Rcfile {
 
 /// Create an Rcfile struct from a mocked .syncpackrc
 pub fn rcfile_from_mock(value: serde_json::Value) -> Rcfile {
-  serde_json::from_value::<crate::rcfile::RawRcfile>(value).unwrap().into()
+  serde_json::from_value::<crate::rcfile::RawRcfile>(value)
+    .unwrap()
+    .try_into()
+    .unwrap()
 }
 
 /// Parse a package.json string
@@ -125,7 +128,7 @@ pub async fn context_with_registry_updates(
   catalogs: Option<CatalogsByName>,
 ) -> (Context, RegistryUpdates) {
   let client: Arc<dyn RegistryClient> = Arc::new(MockRegistryClient::from_json(mock_updates));
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
   let updates = RegistryUpdates::fetch(
     &client,
     &ctx.version_groups,

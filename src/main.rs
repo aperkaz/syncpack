@@ -11,6 +11,7 @@ use {
     visit_formatting::visit_formatting,
     visit_packages::visit_packages,
   },
+  log::error,
   std::{process::exit, sync::Arc},
 };
 
@@ -38,11 +39,17 @@ mod visit_packages;
 
 #[tokio::main]
 async fn main() {
-  let cli = Cli::parse();
+  let cli = Cli::parse().unwrap_or_else(|e| {
+    error!("{e}");
+    exit(1)
+  });
 
   logger::init(&cli);
 
-  let ctx = Context::from_cli(cli);
+  let ctx = Context::from_cli(cli).unwrap_or_else(|e| {
+    error!("{e}");
+    exit(1)
+  });
 
   let exit_code = match ctx.config.cli.subcommand {
     Subcommand::Fix => {

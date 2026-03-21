@@ -135,7 +135,7 @@ impl VersionGroup {
 
   /// Create a single version group from a config item from the rcfile.
   /// Dep-type validation is done during `From<RawRcfile>` conversion.
-  pub fn from_config(group: AnyVersionGroup, packages: &Packages) -> VersionGroup {
+  pub fn from_config(group: AnyVersionGroup, packages: &Packages) -> Result<VersionGroup, String> {
     let selector = GroupSelector::new(
       /* include_dependencies: */ group.dependencies,
       /* include_dependency_types: */ group.dependency_types,
@@ -145,7 +145,7 @@ impl VersionGroup {
     );
 
     if let Some(true) = group.is_banned {
-      return VersionGroup {
+      return Ok(VersionGroup {
         dependencies: BTreeMap::new(),
         matches_cli_filter: false,
         pin_version: None,
@@ -153,10 +153,10 @@ impl VersionGroup {
         selector,
         snap_to: None,
         variant: VersionGroupVariant::Banned,
-      };
+      });
     }
     if let Some(true) = group.is_ignored {
-      return VersionGroup {
+      return Ok(VersionGroup {
         dependencies: BTreeMap::new(),
         matches_cli_filter: false,
         pin_version: None,
@@ -164,10 +164,10 @@ impl VersionGroup {
         selector,
         snap_to: None,
         variant: VersionGroupVariant::Ignored,
-      };
+      });
     }
     if let Some(pin_version) = &group.pin_version {
-      return VersionGroup {
+      return Ok(VersionGroup {
         dependencies: BTreeMap::new(),
         matches_cli_filter: false,
         pin_version: Some(Specifier::new(pin_version)),
@@ -175,11 +175,11 @@ impl VersionGroup {
         selector,
         snap_to: None,
         variant: VersionGroupVariant::Pinned,
-      };
+      });
     }
     if let Some(policy) = &group.policy {
       if policy == "sameRange" {
-        return VersionGroup {
+        return Ok(VersionGroup {
           dependencies: BTreeMap::new(),
           matches_cli_filter: false,
           pin_version: None,
@@ -187,7 +187,7 @@ impl VersionGroup {
           selector,
           snap_to: None,
           variant: VersionGroupVariant::SameRange,
-        };
+        });
       } else if policy == "sameMinor" {
         let prefer_version = group.prefer_version.as_ref().map(|pv| {
           if pv == "lowestSemver" {
@@ -196,7 +196,7 @@ impl VersionGroup {
             PreferVersion::HighestSemver
           }
         });
-        return VersionGroup {
+        return Ok(VersionGroup {
           dependencies: BTreeMap::new(),
           matches_cli_filter: false,
           pin_version: None,
@@ -204,14 +204,13 @@ impl VersionGroup {
           selector,
           snap_to: None,
           variant: VersionGroupVariant::SameMinor,
-        };
+        });
       } else {
-        // @FIXME: show user friendly error message and exit with error code
-        panic!("Unrecognised version group policy: {policy}");
+        return Err(format!("Unrecognised version group policy: {policy}"));
       }
     }
     if let Some(snap_to) = &group.snap_to {
-      return VersionGroup {
+      return Ok(VersionGroup {
         dependencies: BTreeMap::new(),
         matches_cli_filter: false,
         pin_version: None,
@@ -222,7 +221,6 @@ impl VersionGroup {
             .iter()
             .flat_map(|name| {
               packages.get_by_name(name).or_else(|| {
-                // @FIXME: show user friendly error message and exit with error code
                 warn!("Invalid Snapped To Version Group: No package.json file found with a name property of '{name}'");
                 None
               })
@@ -230,10 +228,10 @@ impl VersionGroup {
             .collect(),
         ),
         variant: VersionGroupVariant::SnappedTo,
-      };
+      });
     }
     if let Some(prefer_version) = &group.prefer_version {
-      return VersionGroup {
+      return Ok(VersionGroup {
         dependencies: BTreeMap::new(),
         matches_cli_filter: false,
         pin_version: None,
@@ -245,9 +243,9 @@ impl VersionGroup {
         } else {
           VersionGroupVariant::HighestSemver
         },
-      };
+      });
     }
-    VersionGroup {
+    Ok(VersionGroup {
       dependencies: BTreeMap::new(),
       matches_cli_filter: false,
       pin_version: None,
@@ -255,7 +253,7 @@ impl VersionGroup {
       selector,
       snap_to: None,
       variant: VersionGroupVariant::HighestSemver,
-    }
+    })
   }
 
   /// Returns a sorted iterator of each included dependency

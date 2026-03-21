@@ -24,7 +24,7 @@ fn returns_correct_registry_update_url() {
   })]);
 
   let catalogs = None;
-  let ctx = Context::create(config, packages, catalogs);
+  let ctx = Context::create(config, packages, catalogs).unwrap();
 
   let get_update_url_by_name = |name: &str| {
     ctx

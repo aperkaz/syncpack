@@ -151,7 +151,7 @@ impl PackageJson {
         std::mem::drop(contents);
       }
       Strategy::InvalidConfig => {
-        panic!("unrecognised strategy");
+        unreachable!("unrecognised strategy");
       }
     };
   }
