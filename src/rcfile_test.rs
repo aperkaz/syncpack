@@ -2,7 +2,7 @@ use {
   crate::{
     context::ConfigError,
     rcfile::{semver_group::AnySemverGroup, RawRcfile, Rcfile},
-    version_group::AnyVersionGroup,
+    version_group::{AnyVersionGroup, VersionGroup},
   },
   serde_json::json,
 };
@@ -182,6 +182,6 @@ fn version_group_from_config_rejects_invalid_policy() {
   }))
   .unwrap();
   let packages = crate::packages::Packages::new();
-  let err = crate::version_group::VersionGroup::from_config(group, &packages).unwrap_err();
+  let err = VersionGroup::from_config(group, &packages).unwrap_err();
   assert!(matches!(err, ConfigError::InvalidVersionGroupPolicy(p) if p == "notAPolicy"));
 }
