@@ -6,7 +6,10 @@ const { dirname, join } = require('node:path');
 const args = process.argv.slice(2);
 const arch = process.arch;
 const [os, extension] = ['win32', 'cygwin'].includes(process.platform) ? ['windows', '.exe'] : [process.platform, ''];
-const optionalDep = `syncpack-${os}-${arch}`;
+const isMusl = os === 'linux' && (() => {
+  try { return require('node:fs').readFileSync('/usr/bin/ldd', 'utf8').includes('musl'); } catch { return false; }
+})();
+const optionalDep = `syncpack-${os}-${arch}${isMusl ? '-musl' : ''}`;
 const binaryName = `syncpack${extension}`;
 
 const pathToBinary = resolveBinaryPath();
